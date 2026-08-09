@@ -1,5 +1,6 @@
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
+import io.papermc.paperweight.core.tasks.RunNestedBuild
 
 plugins {
     java // TODO java launcher tasks
@@ -87,5 +88,16 @@ tasks.register("printMinecraftVersion") {
 tasks.register("printMultiPaperVersion") {
     doLast {
         println(project.version)
+    }
+}
+
+// The nested build (Purpur's own pipeline, run inside the purpur checkout) would
+// otherwise check out Paper into <outer upstreams>/paper -- which IS its own
+// project directory -- destroying the purpur working tree mid-build (paperweight
+// 2.0.0-beta.21 fork-of-fork bug). Redirect the nested upstreams dir so Paper
+// lands in a sibling directory.
+afterEvaluate {
+    tasks.named<RunNestedBuild>("applyUpstream") {
+        workDir.set(layout.projectDirectory.dir(".gradle/caches/paperweight/upstreams/paper/nested-upstreams"))
     }
 }
