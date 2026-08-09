@@ -4,6 +4,9 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 plugins {
     java // TODO java launcher tasks
     id("io.papermc.paperweight.patcher") version "2.0.0-beta.21"
+    // Master modules apply the shadow plugin without a version; declaring it
+    // here (apply false) makes the version resolvable build-wide.
+    id("com.github.johnrengelman.shadow") version "8.1.1" apply false
 }
 
 val paperMavenPublicUrl = "https://repo.papermc.io/repository/maven-public/"
