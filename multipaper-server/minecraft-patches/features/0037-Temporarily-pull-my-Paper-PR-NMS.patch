@@ -1,0 +1,30 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Paul <paul@technove.co>
+Date: Sun, 26 Sep 2021 15:10:00 -0500
+Subject: [PATCH] Temporarily pull my Paper PR
+
+
+diff --git a/net/minecraft/world/entity/Mob.java b/net/minecraft/world/entity/Mob.java
+index b8e512e1c4b00b468b2d22add5653b98f4a2c81a..6051fd771dd989f2903b854b6564252a847a74e3 100644
+--- a/net/minecraft/world/entity/Mob.java
++++ b/net/minecraft/world/entity/Mob.java
+@@ -801,16 +801,16 @@ public abstract class Mob extends LivingEntity {
+                 int i = this.getType().getCategory().getDespawnDistance();
+                 int j = i * i;
+ 
+-                if (d0 > (double) level.paperConfig.hardDespawnDistance) { // CraftBukkit - remove isTypeNotPersistent() check // Paper - custom despawn distances
++                if (d0 > (double) level.paperConfig.hardDespawnDistanceSq) { // CraftBukkit - remove isTypeNotPersistent() check // Paper - custom despawn distances // Airplane
+                     this.discard();
+                 }
+ 
+                 int k = this.getType().getCategory().getNoDespawnDistance();
+                 int l = k * k;
+ 
+-                if (this.noActionTime > 600 && this.random.nextInt(800) == 0 && d0 > level.paperConfig.softDespawnDistance) { // CraftBukkit - remove isTypeNotPersistent() check // Paper - custom despawn distances
++                if (this.noActionTime > 600 && this.random.nextInt(800) == 0 && d0 > level.paperConfig.softDespawnDistanceSq) { // CraftBukkit - remove isTypeNotPersistent() check // Paper - custom despawn distances // Airplane
+                     this.discard();
+-                } else if (d0 < level.paperConfig.softDespawnDistance) { // Paper - custom despawn distances
++                } else if (d0 < level.paperConfig.softDespawnDistanceSq) { // Paper - custom despawn distances // Airplane
+                     this.noActionTime = 0;
+                 }
+             }

@@ -1,0 +1,186 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Thu, 7 Jul 2022 01:20:51 +1000
+Subject: [PATCH] Sync raids
+
+
+diff --git a/src/main/java/puregero/multipaper/MultiPaper.java b/src/main/java/puregero/multipaper/MultiPaper.java
+index 7118f8861a895c356b2b223d2d31b826344b6694..124e061d36baf46dbf877aa75a591efb66eb9aee 100644
+--- a/src/main/java/puregero/multipaper/MultiPaper.java
++++ b/src/main/java/puregero/multipaper/MultiPaper.java
+@@ -527,6 +527,7 @@ public class MultiPaper {
+             }
+             broadcastPacketToExternalServers(newChunkHolder.externalEntitiesSubscribers, () -> new SendEntitiesPacket(levelChunk, chunkEntitySlices));
+             broadcastPacketToExternalServers(newChunkHolder.externalSubscribers, () -> new SendTickListPacket(levelChunk));
++            levelChunk.level.getRaids().getActiveRaid(levelChunk.getPos()).ifPresent(RaidUpdatePacket::broadcastUpdate);
+             for (BlockEntity blockEntity : levelChunk.getBlockEntities().values()) {
+                 if (blockEntity instanceof Container container) {
+                     List<HumanEntity> viewers = container.getViewers();
+diff --git a/src/main/java/puregero/multipaper/externalserverprotocol/ExternalServerPacketSerializer.java b/src/main/java/puregero/multipaper/externalserverprotocol/ExternalServerPacketSerializer.java
+index 30d28f986dc92cbc50eba92c894f94b303924c6b..660937262481e759233bd4983f72a25edb40a8b3 100644
+--- a/src/main/java/puregero/multipaper/externalserverprotocol/ExternalServerPacketSerializer.java
++++ b/src/main/java/puregero/multipaper/externalserverprotocol/ExternalServerPacketSerializer.java
+@@ -73,6 +73,8 @@ public class ExternalServerPacketSerializer {
+         addPacket(EntityTeleportPacket.class, EntityTeleportPacket::new);
+         addPacket(ProjectileHitEntityPacket.class, ProjectileHitEntityPacket::new);
+         addPacket(PlayerUseBlockPacket.class, PlayerUseBlockPacket::new);
++        addPacket(RaidUpdatePacket.class, RaidUpdatePacket::new);
++        addPacket(RaidJoinPacket.class, RaidJoinPacket::new);
+     }
+ 
+     private static void addPacket(Class<? extends ExternalServerPacket> clazz, Function<FriendlyByteBuf, ExternalServerPacket> deserializer) {
+diff --git a/src/main/java/puregero/multipaper/externalserverprotocol/RaidJoinPacket.java b/src/main/java/puregero/multipaper/externalserverprotocol/RaidJoinPacket.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..ee993b1e8208a37dcd7527c055522ecdf23b79d0
+--- /dev/null
++++ b/src/main/java/puregero/multipaper/externalserverprotocol/RaidJoinPacket.java
+@@ -0,0 +1,65 @@
++package puregero.multipaper.externalserverprotocol;
++
++import net.minecraft.network.FriendlyByteBuf;
++import net.minecraft.server.level.ServerLevel;
++import net.minecraft.world.entity.Entity;
++import net.minecraft.world.entity.raid.Raid;
++import net.minecraft.world.entity.raid.Raider;
++import org.bukkit.Bukkit;
++import org.bukkit.World;
++import org.bukkit.craftbukkit.CraftWorld;
++import puregero.multipaper.ExternalServerConnection;
++import puregero.multipaper.MultiPaper;
++
++import java.util.UUID;
++
++public class RaidJoinPacket extends ExternalServerPacket {
++    private static boolean handlingJoin = false;
++
++    private final String world;
++    private final UUID uuid;
++    private final int raidId;
++
++    public RaidJoinPacket(Entity entity, Raid raid) {
++        this.world = entity.level().getWorld().getName();
++        this.uuid = entity.getUUID();
++        this.raidId = raid.getId();
++    }
++
++    public RaidJoinPacket(FriendlyByteBuf in) {
++        this.world = in.readUtf();
++        this.uuid = in.readUUID();
++        this.raidId = in.readVarInt();
++    }
++
++    public static void broadcastJoin(Raider entity, Raid raid) {
++        if (!handlingJoin) {
++            MultiPaper.broadcastPacketToExternalServers(new RaidJoinPacket(entity, raid));
++        }
++    }
++
++    @Override
++    public void write(FriendlyByteBuf out) {
++        out.writeUtf(world);
++        out.writeUUID(uuid);
++        out.writeVarInt(raidId);
++    }
++
++    @Override
++    public void handle(ExternalServerConnection connection) {
++        MultiPaper.runSync(() -> {
++            handlingJoin = true;
++            World bukkitWorld = Bukkit.getWorld(world);
++
++            if (bukkitWorld instanceof CraftWorld craftWorld) {
++                ServerLevel level = craftWorld.getHandle();
++                Entity entity = level.getEntityLookup().getEntityIgnoringAccessible(uuid);
++                Raid raid = level.getRaids().get(raidId);
++                if (raid != null && entity instanceof Raider raider) {
++                    raid.joinRaid(raid.getGroupsSpawned(), raider, null, true);
++                }
++            }
++            handlingJoin = false;
++        });
++    }
++}
+diff --git a/src/main/java/puregero/multipaper/externalserverprotocol/RaidUpdatePacket.java b/src/main/java/puregero/multipaper/externalserverprotocol/RaidUpdatePacket.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..ac2c296aa4d7711345d70d9d65175b339c450a84
+--- /dev/null
++++ b/src/main/java/puregero/multipaper/externalserverprotocol/RaidUpdatePacket.java
+@@ -0,0 +1,78 @@
++package puregero.multipaper.externalserverprotocol;
++
++import net.minecraft.nbt.CompoundTag;
++import net.minecraft.network.FriendlyByteBuf;
++import net.minecraft.server.level.ServerLevel;
++import net.minecraft.world.entity.raid.Raid;
++import net.minecraft.world.level.ChunkPos;
++import org.bukkit.Bukkit;
++import org.bukkit.World;
++import org.bukkit.craftbukkit.CraftWorld;
++import puregero.multipaper.ExternalServerConnection;
++import puregero.multipaper.MultiPaper;
++
++import java.io.IOException;
++
++public class RaidUpdatePacket extends ExternalServerPacket {
++    private final String world;
++    private final byte[] data;
++
++    public RaidUpdatePacket(Raid raid) {
++        this.world = raid.getLevel().getWorld().getName();
++
++        CompoundTag tag = new CompoundTag();
++
++        raid.save(tag);
++
++        try {
++            this.data = MultiPaper.nbtToBytes(tag);
++        } catch (IOException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    public RaidUpdatePacket(FriendlyByteBuf in) {
++        this.world = in.readUtf();
++        this.data = in.readByteArray();
++    }
++
++    @Override
++    public void write(FriendlyByteBuf out) {
++        out.writeUtf(world);
++        out.writeByteArray(data);
++    }
++
++    public static void broadcastUpdate(Raid raid) {
++        MultiPaper.broadcastPacketToExternalServers(new RaidUpdatePacket(raid));
++    }
++
++    @Override
++    public void handle(ExternalServerConnection connection) {
++        MultiPaper.runSync(() -> {
++            try {
++                World bukkitWorld = Bukkit.getWorld(world);
++
++                if (bukkitWorld instanceof CraftWorld craftWorld) {
++                    ServerLevel level = craftWorld.getHandle();
++                    CompoundTag tag = MultiPaper.nbtFromBytes(data);
++                    int id = tag.getInt("Id");
++
++                    Raid raid = level.getRaids().raidMap.get(id);
++                    if (raid == null) {
++                        raid = new Raid(level, tag);
++                    } else {
++                        raid.load(level, tag);
++                    }
++
++                    level.getRaids().raidMap.put(raid.getId(), raid);
++
++                    if (!raid.isStopped()) {
++                        level.getRaids().chunkToRaidIdMap.put(ChunkPos.asLong(raid.getCenter()), raid.getId());
++                    }
++                }
++            } catch (IOException e) {
++                e.printStackTrace();
++            }
++        });
++    }
++}

@@ -1,0 +1,73 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Sat, 22 Jan 2022 21:14:21 +1000
+Subject: [PATCH] PRO Pool commonly used objects
+
+
+diff --git a/src/main/java/puregero/multipaper/MultiPaperTemporaryObjectPool.java b/src/main/java/puregero/multipaper/MultiPaperTemporaryObjectPool.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..5ba1a5f69e7e4a5aa426e771edd5396c7de86e3e
+--- /dev/null
++++ b/src/main/java/puregero/multipaper/MultiPaperTemporaryObjectPool.java
+@@ -0,0 +1,61 @@
++package puregero.multipaper;
++
++import org.apache.logging.log4j.LogManager;
++
++import java.util.concurrent.atomic.AtomicInteger;
++import java.util.function.Supplier;
++
++/**
++ * Probably thread-safe
++ *
++ * @author PureGero
++ */
++public class MultiPaperTemporaryObjectPool <T> {
++    private final AtomicInteger index = new AtomicInteger(0);
++    private final int expireTimeMillis;
++    private final Supplier<T> initialiser;
++    private long lastLoop = System.currentTimeMillis();
++    private T[] objects;
++
++    public MultiPaperTemporaryObjectPool(int size, Supplier<T> initialiser) {
++        this(size, 1000, initialiser);
++    }
++
++    public MultiPaperTemporaryObjectPool(int size, int expireTimeMillis, Supplier<T> initialiser) {
++        this.expireTimeMillis = expireTimeMillis;
++        this.initialiser = initialiser;
++        this.expandTo(size);
++    }
++
++    private void expandTo(int size) {
++        Object[] oldObjects = this.objects;
++
++        // Don't copy old objects over as they may not have expired yet
++
++        this.objects = (T[]) new Object[size];
++
++        if (oldObjects != null && oldObjects[0] != null) {
++            LogManager.getLogger().info("Expanding pool of " + oldObjects[0].getClass().getSimpleName() + " to " + size);
++        }
++    }
++
++    public T get() {
++        int myIndex = index.getAndIncrement() & (objects.length - 1);
++
++        if (myIndex == 0) {
++            if (lastLoop > System.currentTimeMillis() - expireTimeMillis) {
++                expandTo(objects.length << 1);
++            }
++
++            lastLoop = System.currentTimeMillis();
++        }
++
++        T t = objects[myIndex];
++
++        if (t == null) {
++            return objects[myIndex] = initialiser.get();
++        }
++
++        return t;
++    }
++}

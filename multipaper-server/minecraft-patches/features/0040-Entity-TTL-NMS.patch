@@ -1,0 +1,35 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Kevin Raneri <kevin.raneri@gmail.com>
+Date: Thu, 2 Jun 2022 19:54:09 -0500
+Subject: [PATCH] Entity TTL
+
+
+diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
+index 62a14dab6908dfbd5c319c3b80afbc88c4481358..0ae80f58ad75c6e397f33fb24c1d0d962adae4bb 100644
+--- a/net/minecraft/world/entity/Entity.java
++++ b/net/minecraft/world/entity/Entity.java
+@@ -817,6 +817,12 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource {
+     // CraftBukkit end
+ 
+     public void baseTick() {
++        // Pufferfish start - entity TTL
++        if (type != EntityType.PLAYER && type.ttl >= 0 && this.tickCount >= type.ttl) {
++            remove(RemovalReason.DISCARDED);
++            return;
++        }
++        // Pufferfish end - entity TTL
+         this.level.getProfiler().push("entityBaseTick");
+         if (firstTick && this instanceof net.minecraft.world.entity.NeutralMob neutralMob) neutralMob.tickInitialPersistentAnger(level); // Paper - Update last hurt when ticking
+         this.feetBlockState = null;
+diff --git a/net/minecraft/world/entity/EntityType.java b/net/minecraft/world/entity/EntityType.java
+index 8e4fb5ce7581cc554752f1810fa6252beb2ed22f..c3953a2740168cb3443e90cfeb3a19fdf5d218c0 100644
+--- a/net/minecraft/world/entity/EntityType.java
++++ b/net/minecraft/world/entity/EntityType.java
+@@ -302,6 +302,7 @@ public class EntityType<T extends Entity> implements FeatureElement, EntityTypeT
+     private final EntityDimensions dimensions;
+     private final FeatureFlagSet requiredFeatures;
+     public boolean dabEnabled = false; // Pufferfish
++    public int ttl = -1; // Pufferfish
+ 
+     private static <T extends Entity> EntityType<T> register(String id, EntityType.Builder type) { // CraftBukkit - decompile error
+         return (EntityType) Registry.register(BuiltInRegistries.ENTITY_TYPE, id, (EntityType<T>) type.build(id)); // CraftBukkit - decompile error

@@ -1,0 +1,35 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Sun, 10 Jul 2022 21:13:49 +1000
+Subject: [PATCH] Acknowledge block changes for external players
+
+
+diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+index b4043c355bc1d8ca7c0da477338d2ed02a15d065..5a68bc74f8a5280c9a7fd27d2c6114c2a031ef7a 100644
+--- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
++++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+@@ -249,6 +249,7 @@ import org.bukkit.inventory.InventoryView;
+ import org.bukkit.inventory.SmithingInventory;
+ import puregero.multipaper.ExternalPlayer;
+ import puregero.multipaper.MultiPaper;
++import puregero.multipaper.MultiPaperAckBlockChangesHandler;
+ import puregero.multipaper.externalserverprotocol.PlayerRemovePacket;
+ // CraftBukkit end
+ 
+@@ -264,7 +265,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+     private final MinecraftServer server;
+     public ServerPlayer player;
+     private int tickCount;
+-    private int ackBlockChangesUpTo = -1;
++    public int ackBlockChangesUpTo = -1; // MultiPaper - make public
+     private long keepAliveTime = Util.getMillis();
+     private boolean keepAlivePending;
+     private long keepAliveChallenge;
+@@ -2293,6 +2294,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+             throw new IllegalArgumentException("Expected packet sequence nr >= 0");
+         } else {
+             this.ackBlockChangesUpTo = Math.max(sequence, this.ackBlockChangesUpTo);
++            MultiPaperAckBlockChangesHandler.onAckNeeded(this.player); // MultiPaper
+         }
+     }
+ 

@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Sun, 27 Feb 2022 11:24:14 +1000
+Subject: [PATCH] Update external player spam counters
+
+
+diff --git a/src/main/java/puregero/multipaper/MultiPaper.java b/src/main/java/puregero/multipaper/MultiPaper.java
+index b22af9eca0febb6e13c64ea2ae8fd49b814ef9c1..12e42d35111bef768c42e6a9d2a520a142c8bea0 100644
+--- a/src/main/java/puregero/multipaper/MultiPaper.java
++++ b/src/main/java/puregero/multipaper/MultiPaper.java
+@@ -98,6 +98,8 @@ public class MultiPaper {
+             }
+ 
+             player.syncExperience();
++
++            player.connection.reduceSpamCounters();
+         }
+ 
+         for (ExternalServer server : getConnection().getServersMap().values()) {

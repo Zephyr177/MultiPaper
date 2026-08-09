@@ -1,0 +1,26 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Mon, 31 Jan 2022 21:14:15 +1000
+Subject: [PATCH] Sync difficulty
+
+
+diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
+index 3c76021a391f02bd952e27f3e6da53dab3988af3..e43e22a9e445c17674a7dd1705ebcfc59b78b9e6 100644
+--- a/net/minecraft/server/MinecraftServer.java
++++ b/net/minecraft/server/MinecraftServer.java
+@@ -196,6 +196,7 @@ import org.bukkit.event.server.ServerLoadEvent;
+ import co.aikar.timings.MinecraftTimings; // Paper
+ import puregero.multipaper.MultiPaper;
+ import puregero.multipaper.MultiPaperExternalBlocksHandler;
++import puregero.multipaper.externalserverprotocol.DifficultyUpdatePacket;
+ 
+ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTask> implements CommandSource, AutoCloseable {
+ 
+@@ -1835,6 +1836,7 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+             level.setSpawnSettings(worldData.getDifficulty() != Difficulty.PEACEFUL && ((DedicatedServer) this).settings.getProperties().spawnMonsters, this.isSpawningAnimals());
+             // this.getPlayerList().getPlayers().forEach(this::sendDifficultyUpdate);
+             // Paper end
++            if (!DifficultyUpdatePacket.updatingDifficulty) MultiPaper.broadcastPacketToExternalServers(level.getWorld().getName(), new DifficultyUpdatePacket(level)); // MultiPaper
+         }
+     }
+ 

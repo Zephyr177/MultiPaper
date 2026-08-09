@@ -1,0 +1,106 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Wed, 16 Mar 2022 20:12:39 +1000
+Subject: [PATCH] Add option to reduce tracking of inactive entities
+
+
+diff --git a/net/minecraft/server/level/ChunkMap.java b/net/minecraft/server/level/ChunkMap.java
+index 2c3fa9ad4191f6f000361693103a5efea4dd46c6..5cb38e5dff274c7c96811b52f9f789b1cf8d7ca4 100644
+--- a/net/minecraft/server/level/ChunkMap.java
++++ b/net/minecraft/server/level/ChunkMap.java
+@@ -1278,6 +1278,8 @@ public class ChunkMap extends ChunkStorage implements ChunkHolder.PlayerProvider
+ 
+     // Paper start - optimised tracker
+     private final void processTrackQueue() {
++        if (this.level.inactiveTracker.tick()) return; // MultiPaper - inactive tracker
++
+         //this.level.timings.tracker1.startTiming(); // Purpur
+         try {
+             for (TrackedEntity tracker : this.entityMap.values()) {
+@@ -1471,7 +1473,7 @@ public class ChunkMap extends ChunkStorage implements ChunkHolder.PlayerProvider
+         // Paper start - use distance map to optimise tracker
+         com.destroystokyo.paper.util.misc.PooledLinkedHashSets.PooledObjectLinkedOpenHashSet<ServerPlayer> lastTrackerCandidates;
+ 
+-        final void updatePlayers(com.destroystokyo.paper.util.misc.PooledLinkedHashSets.PooledObjectLinkedOpenHashSet<ServerPlayer> newTrackerCandidates) {
++        public final void updatePlayers(com.destroystokyo.paper.util.misc.PooledLinkedHashSets.PooledObjectLinkedOpenHashSet<ServerPlayer> newTrackerCandidates) { // MultiPaper
+             com.destroystokyo.paper.util.misc.PooledLinkedHashSets.PooledObjectLinkedOpenHashSet<ServerPlayer> oldTrackerCandidates = this.lastTrackerCandidates;
+             this.lastTrackerCandidates = newTrackerCandidates;
+ 
+diff --git a/net/minecraft/server/level/ServerEntity.java b/net/minecraft/server/level/ServerEntity.java
+index ff3f4ef72eed137fbb1d29fce2398dc04076aa7f..a78b443c23d7f2a66b8bd1331a2c64102cb2b088 100644
+--- a/net/minecraft/server/level/ServerEntity.java
++++ b/net/minecraft/server/level/ServerEntity.java
+@@ -56,7 +56,7 @@ public class ServerEntity {
+     private static final int TOLERANCE_LEVEL_ROTATION = 1;
+     private final ServerLevel level;
+     private final Entity entity;
+-    private final int updateInterval;
++    public final int updateInterval; // MultiPaper
+     private final boolean trackDelta;
+     private final Consumer<Packet<?>> broadcast;
+     private final VecDeltaCodec positionCodec = new VecDeltaCodec();
+@@ -71,6 +71,7 @@ public class ServerEntity {
+     private boolean wasOnGround;
+     @Nullable
+     private List<SynchedEntityData.DataValue<?>> trackedDataValues;
++    public int lastChangesSent; // MultiPaper
+     // CraftBukkit start
+     public final Set<ServerPlayerConnection> trackedPlayers; // Paper - private -> package // Purpur - package -> public
+ 
+@@ -150,7 +151,7 @@ public class ServerEntity {
+             }
+         }
+ 
+-        if (this.tickCount % this.updateInterval == 0 || this.entity.hasImpulse || this.entity.getEntityData().isDirty()) {
++        if (this.tickCount % this.updateInterval == 0 || this.entity.hasImpulse || this.entity.getEntityData().isDirty() || this.entity.sendChangesThisTick) { // MultiPaper
+             int i;
+             int j;
+ 
+diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
+index 209f71a7a8c2835a76b79c6fd4a4322769c3ead2..76a612ae6b783a9b712d05b5ae4f4f857532e4a1 100644
+--- a/net/minecraft/server/level/ServerLevel.java
++++ b/net/minecraft/server/level/ServerLevel.java
+@@ -185,6 +185,7 @@ import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet; // Paper
+ import puregero.multipaper.MultiPaper;
+ import puregero.multipaper.MultiPaperChunkHandler;
+ import puregero.multipaper.MultiPaperEntitiesHandler;
++import puregero.multipaper.MultiPaperInactiveTracker;
+ import puregero.multipaper.externalserverprotocol.SpawnUpdatePacket;
+ import puregero.multipaper.externalserverprotocol.TimeUpdatePacket;
+ 
+@@ -217,6 +218,7 @@ public class ServerLevel extends Level implements WorldGenLevel {
+     private final ObjectLinkedOpenHashSet<BlockEventData> blockEvents;
+     private final List<BlockEventData> blockEventsToReschedule;
+     private boolean handlingTick;
++    public final MultiPaperInactiveTracker inactiveTracker = new MultiPaperInactiveTracker(this); // MultiPaper
+     private final List<CustomSpawner> customSpawners;
+     @Nullable
+     private EndDragonFight dragonFight;
+@@ -1445,6 +1447,7 @@ public class ServerLevel extends Level implements WorldGenLevel {
+         //gameprofilerfiller.incrementCounter("tickNonPassenger"); // Purpur
+         if (isActive) { // Paper - EAR 2
+             TimingHistory.activatedEntityTicks++;
++        inactiveTracker.track(entity); // MultiPaper
+         entity.tick();
+         entity.postTick(); // CraftBukkit
+         } else { entity.inactiveTick(); } // Paper - EAR 2
+@@ -1485,6 +1488,7 @@ public class ServerLevel extends Level implements WorldGenLevel {
+                 //gameprofilerfiller.incrementCounter("tickPassenger"); // Purpur
+                 // Paper start - EAR 2
+                 if (isActive) {
++                inactiveTracker.track(passenger); // MultiPaper
+                 passenger.rideTick();
+                 passenger.postTick(); // CraftBukkit
+                 } else {
+diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
+index b77a310027a683b5e18a500012fc28c39c898039..f8242d7e48b8bb7b73daefcd7af89fd18d7c7313 100644
+--- a/net/minecraft/world/entity/Entity.java
++++ b/net/minecraft/world/entity/Entity.java
+@@ -343,6 +343,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource {
+     public float maxUpStep; // Purpur - private -> public
+     public boolean noPhysics;
+     protected final RandomSource random;
++    public boolean sendChangesThisTick = false; // MultiPaper
+     public int tickCount;
+     private int remainingFireTicks;
+     public boolean wasTouchingWater;

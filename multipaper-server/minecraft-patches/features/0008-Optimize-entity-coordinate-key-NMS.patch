@@ -1,0 +1,25 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Kevin Raneri <kevin.raneri@gmail.com>
+Date: Tue, 9 Nov 2021 14:33:16 -0500
+Subject: [PATCH] Optimize entity coordinate key
+
+When executing getCoordinateKey for entities (a hotpath), the JVM is
+required to repeatedly cast doubles to longs. The performance impact of
+this depends on the CPU architecture, but generally switching between
+FPU and ALU incurs a significant performance hit. The casted/rounded
+data is already available in the blockPosition struct, so we use that
+instead of re-doing the casting.
+
+diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
+index 6fa47becd0f83ac4273ef3a10c314aa27b08184b..a70c514050ec88e4c68c53d472b301c2e59faaa6 100644
+--- a/net/minecraft/world/entity/Entity.java
++++ b/net/minecraft/world/entity/Entity.java
+@@ -291,7 +291,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource {
+     public double yo;
+     public double zo;
+     private Vec3 position;
+-    private BlockPos blockPosition;
++    public BlockPos blockPosition; // Pufferfish - private->public
+     private ChunkPos chunkPosition;
+     private Vec3 deltaMovement;
+     private float yRot;

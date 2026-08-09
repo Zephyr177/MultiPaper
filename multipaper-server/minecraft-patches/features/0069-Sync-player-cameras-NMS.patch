@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Sun, 9 Jan 2022 15:23:24 +1000
+Subject: [PATCH] Sync player cameras
+
+
+diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
+index 3901ebd2d8025aa20c757f56ead4caa1133a8814..f5962fba7b9598c42b3d588b3806c3e079066d8d 100644
+--- a/net/minecraft/server/level/ServerPlayer.java
++++ b/net/minecraft/server/level/ServerPlayer.java
+@@ -2328,6 +2328,8 @@ public class ServerPlayer extends Player {
+ 
+             this.connection.send(new ClientboundSetCameraPacket(this.camera));
+             this.connection.resetPosition();
++
++            if (!PlayerSetCameraPacket.handlingSetCamera) MultiPaper.broadcastPacketToExternalServers(this, new PlayerSetCameraPacket(this, entity)); // MultiPaper
+         }
+     }
+ 

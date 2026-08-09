@@ -1,0 +1,25 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Thu, 14 Apr 2022 23:24:51 +1000
+Subject: [PATCH] Check if player is still connected after
+ PlayerSpawnLocationEvent
+
+
+diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
+index 82ea74171d827fd9a57a89ac721bdb575001bfba..6f44d958ca76887c02eaa4c7287435872422f464 100644
+--- a/net/minecraft/server/players/PlayerList.java
++++ b/net/minecraft/server/players/PlayerList.java
+@@ -257,6 +257,13 @@ public abstract class PlayerList {
+         org.spigotmc.event.player.PlayerSpawnLocationEvent ev = new com.destroystokyo.paper.event.player.PlayerInitialSpawnEvent(spawnPlayer, spawnPlayer.getLocation()); // Paper use our duplicate event
+         this.cserver.getPluginManager().callEvent(ev);
+ 
++        // MultiPaper start - Check if player is still connected after PlayerSpawnLocationEvent
++        if (!connection.isConnected()) {
++            MultiPaper.sendPlayerDisconnect(player);
++            return;
++        }
++        // MultiPaper end
++
+         Location loc = ev.getSpawnLocation();
+         worldserver1 = ((CraftWorld) loc.getWorld()).getHandle();
+ 

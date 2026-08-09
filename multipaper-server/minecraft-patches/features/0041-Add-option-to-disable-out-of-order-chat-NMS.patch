@@ -1,0 +1,18 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Kevin Raneri <kevin.raneri@gmail.com>
+Date: Sat, 30 Jul 2022 22:12:43 -0500
+Subject: [PATCH] Add option to disable out-of-order chat
+
+
+diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+index 38886a155a12dca873ad0bf21496ce5d2c79874b..c89e430cfddb431ee1d20e59f8bd60e3a3a952b9 100644
+--- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
++++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+@@ -2353,6 +2353,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+     }
+ 
+     private boolean updateChatOrder(Instant timestamp) {
++        if (gg.pufferfish.pufferfish.PufferfishConfig.disableOutOfOrderChat) return true;
+         Instant instant1;
+ 
+         do {

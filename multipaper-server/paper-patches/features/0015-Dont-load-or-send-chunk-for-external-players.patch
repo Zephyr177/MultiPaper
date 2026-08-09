@@ -1,0 +1,28 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Thu, 2 Dec 2021 09:17:26 +1000
+Subject: [PATCH] Dont load or send chunk for external players
+
+
+diff --git a/src/main/java/io/papermc/paper/chunk/system/RegionizedPlayerChunkLoader.java b/src/main/java/io/papermc/paper/chunk/system/RegionizedPlayerChunkLoader.java
+index 924539d4ac50c70178ba220424ffacd6ff277c8b..a8cfdade0a992baaf9b5649ae34410d0e6964336 100644
+--- a/src/main/java/io/papermc/paper/chunk/system/RegionizedPlayerChunkLoader.java
++++ b/src/main/java/io/papermc/paper/chunk/system/RegionizedPlayerChunkLoader.java
+@@ -32,6 +32,8 @@ import net.minecraft.world.level.levelgen.BelowZeroRetrogen;
+ import org.apache.commons.lang3.mutable.MutableObject;
+ import org.bukkit.craftbukkit.entity.CraftPlayer;
+ import org.bukkit.entity.Player;
++import puregero.multipaper.MultiPaper;
++
+ import java.lang.invoke.VarHandle;
+ import java.util.ArrayDeque;
+ import java.util.concurrent.TimeUnit;
+@@ -125,7 +127,7 @@ public class RegionizedPlayerChunkLoader {
+ 
+     public void addPlayer(final ServerPlayer player) {
+         TickThread.ensureTickThread(player, "Cannot add player to player chunk loader async");
+-        if (!player.isRealPlayer) {
++        if (MultiPaper.isExternalPlayer(player) || !player.isRealPlayer) { // MultiPaper
+             return;
+         }
+ 

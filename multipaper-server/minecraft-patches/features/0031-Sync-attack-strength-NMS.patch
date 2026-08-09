@@ -1,0 +1,45 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Sun, 28 Nov 2021 23:37:01 +1000
+Subject: [PATCH] Sync attack strength
+
+
+diff --git a/net/minecraft/world/entity/player/Player.java b/net/minecraft/world/entity/player/Player.java
+index 816ef12ee70088545bc1f8cf18b0eae07af74ce7..e1ac28aedb927231acedbe86549c696d659f3603 100644
+--- a/net/minecraft/world/entity/player/Player.java
++++ b/net/minecraft/world/entity/player/Player.java
+@@ -127,6 +127,7 @@ import org.bukkit.event.entity.EntityExhaustionEvent;
+ import org.bukkit.event.player.PlayerDropItemEvent;
+ import org.bukkit.event.player.PlayerVelocityEvent;
+ import puregero.multipaper.MultiPaperEntityInteractHandler;
++import puregero.multipaper.externalserverprotocol.PlayerResetAttackStrengthPacket;
+ // CraftBukkit end
+ 
+ public abstract class Player extends LivingEntity {
+@@ -335,7 +336,18 @@ public abstract class Player extends LivingEntity {
+             this.setPos(d0, this.getY(), d1);
+         }
+ 
++    // MultiPaper start
++        tickAttackStrength();
++        tickAttackStrengthAfter();
++    }
++
++    public void tickAttackStrength() {
+         ++this.attackStrengthTicker;
++    }
++
++    public void tickAttackStrengthAfter() {
++    // MultiPaper end
++
+         ItemStack itemstack = this.getMainHandItem();
+ 
+         if (!ItemStack.matches(this.lastItemInMainHand, itemstack)) {
+@@ -2317,6 +2329,7 @@ public abstract class Player extends LivingEntity {
+     }
+ 
+     public void resetAttackStrengthTicker() {
++        PlayerResetAttackStrengthPacket.broadcastResetAttackStrength(this);
+         this.attackStrengthTicker = 0;
+     }
+ 

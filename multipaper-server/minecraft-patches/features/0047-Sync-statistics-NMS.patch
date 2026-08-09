@@ -1,0 +1,26 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Mon, 20 Dec 2021 17:35:31 +1000
+Subject: [PATCH] Sync statistics
+
+
+diff --git a/net/minecraft/stats/StatsCounter.java b/net/minecraft/stats/StatsCounter.java
+index 6eff3bdab7ce445b703b983ddbebac0470559a53..6d8c431c115458a5d0f6bd5151e12f3df7b8626e 100644
+--- a/net/minecraft/stats/StatsCounter.java
++++ b/net/minecraft/stats/StatsCounter.java
+@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.objects.Object2IntMap;
+ import it.unimi.dsi.fastutil.objects.Object2IntMaps;
+ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+ import net.minecraft.world.entity.player.Player;
++import puregero.multipaper.MultiPaperStatHandler;
+ 
+ public class StatsCounter {
+ 
+@@ -22,6 +23,7 @@ public class StatsCounter {
+             return;
+         }
+         // CraftBukkit end
++        MultiPaperStatHandler.onStatIncrease(player, stat, value); // MultiPaper
+         this.setValue(player, stat, j);
+     }
+ 

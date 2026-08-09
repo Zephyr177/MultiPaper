@@ -1,0 +1,211 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Thu, 25 Nov 2021 15:25:30 +1000
+Subject: [PATCH] Sync json files
+
+
+diff --git a/net/minecraft/server/dedicated/DedicatedPlayerList.java b/net/minecraft/server/dedicated/DedicatedPlayerList.java
+index 935dac757280731bfeb0a8f033cbe315ecac46da..2402b0e9931ee7026c22d872c675c05e3e53f961 100644
+--- a/net/minecraft/server/dedicated/DedicatedPlayerList.java
++++ b/net/minecraft/server/dedicated/DedicatedPlayerList.java
+@@ -23,16 +23,18 @@ public class DedicatedPlayerList extends PlayerList {
+     @Override
+     public void loadAndSaveFiles() {
+         // Paper end
++        // MultiPaper start - why are we saving these if we haven't modified them?
+         this.loadUserBanList();
+-        this.saveUserBanList();
++        // this.saveUserBanList();
+         this.loadIpBanList();
+-        this.saveIpBanList();
++        // this.saveIpBanList();
+         this.loadOps();
+         this.loadWhiteList();
+-        this.saveOps();
+-        if (!this.getWhiteList().getFile().exists()) {
+-            this.saveWhiteList();
+-        }
++        // this.saveOps();
++        // if (!this.getWhiteList().getFile().exists()) {
++        //    this.saveWhiteList();
++        // }
++        // MultiPaper end
+ 
+     }
+ 
+diff --git a/net/minecraft/server/players/IpBanList.java b/net/minecraft/server/players/IpBanList.java
+index 8382b5de75803e2d5443662cedc975e548c36fbc..4f135486a826ce12b0651b9c79b6fba2683e9055 100644
+--- a/net/minecraft/server/players/IpBanList.java
++++ b/net/minecraft/server/players/IpBanList.java
+@@ -1,6 +1,9 @@
+ package net.minecraft.server.players;
+ 
+ import com.google.gson.JsonObject;
++import puregero.multipaper.externalserverprotocol.BanIpPacket;
++import puregero.multipaper.externalserverprotocol.PardonIpPacket;
++
+ import java.io.File;
+ import java.net.SocketAddress;
+ import javax.annotation.Nullable;
+@@ -42,4 +45,18 @@ public class IpBanList extends StoredUserList<String, IpBanListEntry> {
+ 
+         return string;
+     }
++
++    // MultiPaper start
++    @Override
++    public void add(IpBanListEntry entry) {
++        super.add(entry);
++        BanIpPacket.broadcast(entry.getUser(), entry.created, entry.expires, entry.reason, entry.source);
++    }
++
++    @Override
++    public void remove(String key) {
++        super.remove(key);
++        PardonIpPacket.broadcast(key);
++    }
++    // MultiPaper end
+ }
+diff --git a/net/minecraft/server/players/ServerOpList.java b/net/minecraft/server/players/ServerOpList.java
+index e80323a54dcd3b065ec73f0abe5bb196d7de93a0..0a17bf23ce4df8d04964940ce30cb7b1bbb0a254 100644
+--- a/net/minecraft/server/players/ServerOpList.java
++++ b/net/minecraft/server/players/ServerOpList.java
+@@ -2,6 +2,9 @@ package net.minecraft.server.players;
+ 
+ import com.google.gson.JsonObject;
+ import com.mojang.authlib.GameProfile;
++import puregero.multipaper.externalserverprotocol.DeopPlayerPacket;
++import puregero.multipaper.externalserverprotocol.OpPlayerPacket;
++
+ import java.io.File;
+ import java.util.Objects;
+ 
+@@ -31,4 +34,18 @@ public class ServerOpList extends StoredUserList<GameProfile, ServerOpListEntry>
+     protected String getKeyForUser(GameProfile gameProfile) {
+         return gameProfile.getId().toString();
+     }
++
++    // MultiPaper start
++    @Override
++    public void add(ServerOpListEntry entry) {
++        super.add(entry);
++        OpPlayerPacket.broadcast(entry.getUser().getName(), entry.getUser().getId(), entry.getLevel(), entry.getBypassesPlayerLimit());
++    }
++
++    @Override
++    public void remove(GameProfile key) {
++        super.remove(key);
++        DeopPlayerPacket.broadcast(key.getName(), key.getId());
++    }
++    // MultiPaper end
+ }
+diff --git a/net/minecraft/server/players/StoredUserList.java b/net/minecraft/server/players/StoredUserList.java
+index 9e8112fbc40a1d89c0f73ea4452e0fa1bb459bf4..0456ba9a3d313f6ac07f1ce8fac64fe4d4bce834 100644
+--- a/net/minecraft/server/players/StoredUserList.java
++++ b/net/minecraft/server/players/StoredUserList.java
+@@ -27,6 +27,7 @@ import javax.annotation.Nullable;
+ import net.minecraft.Util;
+ import net.minecraft.util.GsonHelper;
+ import org.slf4j.Logger;
++import puregero.multipaper.MultiPaper;
+ 
+ public abstract class StoredUserList<K, V extends StoredUserEntry<K>> {
+ 
+@@ -154,10 +155,10 @@ public abstract class StoredUserList<K, V extends StoredUserEntry<K>> {
+ 
+         Objects.requireNonNull(jsonarray);
+         stream.forEach(jsonarray::add);
+-        BufferedWriter bufferedwriter = Files.newWriter(this.file, StandardCharsets.UTF_8);
++        BufferedWriter bufferedwriter = null; // Files.newWriter(this.file, StandardCharsets.UTF_8); // MultiPaper - don't touch files
+ 
+         try {
+-            StoredUserList.GSON.toJson(jsonarray, bufferedwriter);
++            MultiPaper.writeJson(this.file.getName(), StoredUserList.GSON.toJson(jsonarray)); // StoredUserList.GSON.toJson(jsonarray, bufferedwriter); // MultiPaper
+         } catch (Throwable throwable) {
+             if (bufferedwriter != null) {
+                 try {
+@@ -177,11 +178,18 @@ public abstract class StoredUserList<K, V extends StoredUserEntry<K>> {
+     }
+ 
+     public void load() throws IOException {
+-        if (this.file.exists()) {
+-            BufferedReader bufferedreader = Files.newReader(this.file, StandardCharsets.UTF_8);
++        if (true || this.file.exists()) { // MultiPaper
++            BufferedReader bufferedreader = null; // Files.newReader(this.file, StandardCharsets.UTF_8); // MultiPaper
++            
++            // MultiPaper start
++            String json = MultiPaper.readJson(this.file.getName());
++            if (json == null || json.isEmpty()) {
++                return;
++            }
++            // MultiPaper end
+ 
+             try {
+-                JsonArray jsonarray = (JsonArray) StoredUserList.GSON.fromJson(bufferedreader, JsonArray.class);
++                JsonArray jsonarray = (JsonArray) StoredUserList.GSON.fromJson(json, JsonArray.class); // MultiPaper
+                 com.google.common.base.Preconditions.checkState(jsonarray != null, "The file \"" + this.file.getName() + "\" is either empty or corrupt"); // Paper
+ 
+                 this.map.clear();
+diff --git a/net/minecraft/server/players/UserBanList.java b/net/minecraft/server/players/UserBanList.java
+index 524c5f227a73ea987e760311c761561e13e7d8ee..2c81d4caba4ae2e258964d8f1d49f912d6d2c223 100644
+--- a/net/minecraft/server/players/UserBanList.java
++++ b/net/minecraft/server/players/UserBanList.java
+@@ -2,6 +2,9 @@ package net.minecraft.server.players;
+ 
+ import com.google.gson.JsonObject;
+ import com.mojang.authlib.GameProfile;
++import puregero.multipaper.externalserverprotocol.BanPlayerPacket;
++import puregero.multipaper.externalserverprotocol.PardonPlayerPacket;
++
+ import java.io.File;
+ import java.util.Objects;
+ 
+@@ -30,4 +33,18 @@ public class UserBanList extends StoredUserList<GameProfile, UserBanListEntry> {
+     protected String getKeyForUser(GameProfile gameProfile) {
+         return gameProfile.getId().toString();
+     }
++
++    // MultiPaper start
++    @Override
++    public void add(UserBanListEntry entry) {
++        super.add(entry);
++        BanPlayerPacket.broadcast(entry.getUser().getName(), entry.getUser().getId(), entry.created, entry.expires, entry.reason, entry.source);
++    }
++
++    @Override
++    public void remove(GameProfile key) {
++        super.remove(key);
++        PardonPlayerPacket.broadcast(key.getName(), key.getId());
++    }
++    // MultiPaper end
+ }
+diff --git a/net/minecraft/server/players/UserWhiteList.java b/net/minecraft/server/players/UserWhiteList.java
+index e5c218833f5bcb1c908cd62bdc57cc5152d37be5..00c4c81dc33c23e384ac476fbfb7af99f8eaf5c6 100644
+--- a/net/minecraft/server/players/UserWhiteList.java
++++ b/net/minecraft/server/players/UserWhiteList.java
+@@ -2,6 +2,9 @@ package net.minecraft.server.players;
+ 
+ import com.google.gson.JsonObject;
+ import com.mojang.authlib.GameProfile;
++import puregero.multipaper.externalserverprotocol.RemoveWhiteListedPlayerPacket;
++import puregero.multipaper.externalserverprotocol.WhiteListPlayerPacket;
++
+ import java.io.File;
+ import java.util.Objects;
+ 
+@@ -38,6 +41,7 @@ public class UserWhiteList extends StoredUserList<GameProfile, UserWhiteListEntr
+         }
+ 
+         super.add(entry);
++        WhiteListPlayerPacket.broadcast(entry.getUser().getName(), entry.getUser().getId()); // MultiPaper
+     }
+ 
+     @Override
+@@ -47,6 +51,7 @@ public class UserWhiteList extends StoredUserList<GameProfile, UserWhiteListEntr
+         }
+ 
+         super.remove(profile);
++        RemoveWhiteListedPlayerPacket.broadcast(profile.getName(), profile.getId()); // MultiPaper
+     }
+     // Paper end
+ }

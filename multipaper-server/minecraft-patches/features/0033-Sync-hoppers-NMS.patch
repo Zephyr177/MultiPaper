@@ -1,0 +1,102 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Sat, 4 Dec 2021 18:34:35 +1000
+Subject: [PATCH] Sync hoppers
+
+
+diff --git a/net/minecraft/world/level/block/entity/BlockEntity.java b/net/minecraft/world/level/block/entity/BlockEntity.java
+index 595da1f6f24ebb88bd7e6358675faf9787c9ed33..d4e09813f3ef09cfd5d419199df977b305cabff0 100644
+--- a/net/minecraft/world/level/block/entity/BlockEntity.java
++++ b/net/minecraft/world/level/block/entity/BlockEntity.java
+@@ -29,7 +29,7 @@ import co.aikar.timings.MinecraftTimings; // Paper
+ import co.aikar.timings.Timing; // Paper
+ 
+ public abstract class BlockEntity {
+-    static boolean ignoreTileUpdates; // Paper
++    public static boolean ignoreTileUpdates; // Paper // MultiPaper - set public
+ 
+     public Timing tickTimer = MinecraftTimings.getTileEntityTimings(this); // Paper
+     // CraftBukkit start - data containers
+diff --git a/net/minecraft/world/level/block/entity/HopperBlockEntity.java b/net/minecraft/world/level/block/entity/HopperBlockEntity.java
+index f03608a133338b0f5522a07239e06fd2245db1e5..ea4c04dcfecba89f294a2ee72f14fe83989a050b 100644
+--- a/net/minecraft/world/level/block/entity/HopperBlockEntity.java
++++ b/net/minecraft/world/level/block/entity/HopperBlockEntity.java
+@@ -6,11 +6,14 @@ import java.util.function.BooleanSupplier;
+ import java.util.stream.Collectors;
+ import java.util.stream.IntStream;
+ import javax.annotation.Nullable;
++
++import io.papermc.paper.chunk.system.scheduling.NewChunkHolder;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Direction;
+ import net.minecraft.core.NonNullList;
+ import net.minecraft.nbt.CompoundTag;
+ import net.minecraft.network.chat.Component;
++import net.minecraft.server.level.ServerLevel;
+ import net.minecraft.world.CompoundContainer;
+ import net.minecraft.world.Container;
+ import net.minecraft.world.ContainerHelper;
+@@ -28,6 +31,7 @@ import net.minecraft.world.level.block.Block;
+ import net.minecraft.world.level.block.ChestBlock;
+ import net.minecraft.world.level.block.HopperBlock;
+ import net.minecraft.world.level.block.state.BlockState;
++import net.minecraft.world.level.chunk.LevelChunk;
+ import net.minecraft.world.phys.AABB;
+ import net.minecraft.world.phys.shapes.BooleanOp;
+ import net.minecraft.world.phys.shapes.Shapes;
+@@ -41,6 +45,9 @@ import org.bukkit.event.inventory.HopperInventorySearchEvent;
+ import org.bukkit.event.inventory.InventoryMoveItemEvent;
+ import org.bukkit.event.inventory.InventoryPickupItemEvent;
+ import org.bukkit.inventory.Inventory;
++import puregero.multipaper.MultiPaper;
++import puregero.multipaper.MultiPaperContainerHandler;
++import puregero.multipaper.externalserverprotocol.PullItemFromContainerPacket;
+ // CraftBukkit end
+ 
+ public class HopperBlockEntity extends RandomizableContainerBlockEntity implements Hopper {
+@@ -257,7 +264,7 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
+                         origItemStack.setCount(originalItemCount - movedItemCount + remainingItemCount);
+                     }
+                     hopper.setItem(i, origItemStack);
+-                    destination.setChanged();
++                    hopper.setChanged(); // destination.setChanged(); // MultiPaper - redundant to have destination, handled in addItem, changed to hopper
+                     return true;
+                 }
+                 origItemStack.setCount(originalItemCount);
+@@ -287,6 +294,20 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
+             }
+         }
+ 
++        // MultiPaper start - logic for pulling from double chests that span multiple servers
++        if (container instanceof CompoundContainer compoundContainer) {
++            BlockEntity primaryChest = MultiPaperContainerHandler.getPrimaryChest(compoundContainer);
++            NewChunkHolder newChunkHolder = MultiPaper.getChunkHolder((ServerLevel) primaryChest.getLevel(), primaryChest.getBlockPos());
++            if (MultiPaper.isChunkExternal(newChunkHolder)) {
++                newChunkHolder.externalOwner.getConnection().send(new PullItemFromContainerPacket(primaryChest, i, origItemStack, hopper));
++                if (level.paperConfig().hopper.cooldownWhenFull) {
++                    cooldownHopper(hopper);
++                }
++                return true;
++            }
++        }
++        // MultiPaper end
++
+         final ItemStack remainingItem = addItem(container, hopper, movedItem, null);
+         final int remainingItemCount = remainingItem.getCount();
+         if (remainingItemCount != movedItemCount) {
+@@ -667,6 +688,7 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
+ 
+     private static ItemStack tryMoveInItem(@Nullable Container from, Container to, ItemStack stack, int slot, @Nullable Direction side) {
+         ItemStack itemstack1 = to.getItem(slot);
++        int startingStackSize = itemstack1.getCount(); // MultiPaper
+ 
+         if (HopperBlockEntity.canPlaceItemInContainer(to, stack, slot, side)) {
+             boolean flag = false;
+@@ -713,6 +735,7 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
+                     }
+                 }
+ 
++                if (!MultiPaperContainerHandler.increaseItemExternal(to, slot, to.getItem(slot), to.getItem(slot).getCount() - startingStackSize)) // MultiPaper - don't change external containers
+                 to.setChanged();
+             }
+         }

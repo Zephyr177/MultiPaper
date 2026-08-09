@@ -1,0 +1,46 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Kevin Raneri <kevin.raneri@gmail.com>
+Date: Wed, 10 Nov 2021 00:37:03 -0500
+Subject: [PATCH] Optimize mob spawning
+
+This patch aims to reduce the main-thread impact of mob spawning by
+offloading as much work as possible to other threads. It is possible for
+inconsistencies to come up, but when they happen they never interfere
+with the server's operation (they don't produce errors), and side
+effects are limited to more or less mobs being spawned in any particular
+tick.
+
+It is possible to disable this optimization if it is not required or if
+it interferes with any plugins. On servers with thousands of entities,
+this can result in performance gains of up to 15%, which is significant
+and, in my opinion, worth the low risk of minor mob-spawning-related
+inconsistencies.
+
+diff --git a/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java b/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
+index 54ac6e14f0be4b32ffdcf9016d6535e84c61628f..ef0a3dddabadcc4d04609879349bc1ec30a3fcee 100644
+--- a/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
++++ b/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
+@@ -89,6 +89,23 @@ public class PufferfishConfig {
+ 				"This can be overridden per-player with the permission pufferfish.usebooks");
+ 	}
+ 	
++	public static boolean enableAsyncMobSpawning;
++	public static boolean asyncMobSpawningInitialized;
++	private static void asyncMobSpawning() {
++		boolean temp = getBoolean("enable-async-mob-spawning", false,
++				"Whether or not asynchronous mob spawning should be enabled.",
++				"On servers with many entities, this can improve performance by up to 15%. You must have",
++				"paper's per-player-mob-spawns setting set to true for this to work.",
++				"One quick note - this does not actually spawn mobs async (that would be very unsafe).",
++				"This just offloads some expensive calculations that are required for mob spawning.");
++		
++		// This prevents us from changing the value during a reload.
++		if (!asyncMobSpawningInitialized) {
++			asyncMobSpawningInitialized = true;
++			enableAsyncMobSpawning = temp;
++		}
++	}
++	
+ 	private static void ensureDefault(String key, Object defaultValue, String... comment) {
+ 		if (!config.contains(key)) {
+ 			config.set(key, defaultValue);

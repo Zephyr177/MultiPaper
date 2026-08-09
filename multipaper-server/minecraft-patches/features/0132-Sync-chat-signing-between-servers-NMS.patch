@@ -1,0 +1,68 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Wed, 14 Dec 2022 00:51:25 +1000
+Subject: [PATCH] Sync chat signing between servers
+
+Don't use chat signing with high player counts. Everyone's gonna get kicked
+with a chat signing validation error at some point. Just disable it for your
+own sake.
+
+diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+index 9e95bbaddd4cfddc67375c903a21526699e9b2e0..1b07ab5db102c54a71f135af0323955eb70857aa 100644
+--- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
++++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+@@ -254,8 +254,10 @@ import puregero.multipaper.MultiPaperEntityInteractHandler;
+ import puregero.multipaper.MultiPaperInventoryHandler;
+ import puregero.multipaper.MultiPaperPlayerHandler;
+ import puregero.multipaper.MultiPaperSignHandler;
++import puregero.multipaper.externalserverprotocol.AddPendingMessagePacket;
+ import puregero.multipaper.externalserverprotocol.PlayerActionPacket;
+ import puregero.multipaper.externalserverprotocol.PlayerRemovePacket;
++import puregero.multipaper.externalserverprotocol.SetPlayerChatStatePacket;
+ // CraftBukkit end
+ 
+ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, TickablePacketListener, ServerGamePacketListener {
+@@ -311,7 +313,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+     private boolean hasLoggedExpiry = false; // Paper
+     private SignedMessageChain.Decoder signedMessageDecoder;
+     private final LastSeenMessagesValidator lastSeenMessages;
+-    private final MessageSignatureCache messageSignatureCache;
++    public final MessageSignatureCache messageSignatureCache; // MultiPaper - make public
+     private final FutureChain chatMessageChain;
+     private static final long KEEPALIVE_LIMIT = Long.getLong("paper.playerconnection.keepalive", 30) * 1000; // Paper - provide property to set keepalive limit
+     private static final int MAX_SIGN_LINE_LENGTH = Integer.getInteger("Paper.maxSignLength", 80); // Paper
+@@ -2760,6 +2762,8 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+     public void handleChatAck(ServerboundChatAckPacket packet) {
+         LastSeenMessagesValidator lastseenmessagesvalidator = this.lastSeenMessages;
+ 
++        if (MultiPaper.isRealPlayer(this.player)) MultiPaper.broadcastPacketToExternalServers(this.player, new PlayerActionPacket(this.player, packet)); // MultiPaper
++
+         synchronized (this.lastSeenMessages) {
+             if (!this.lastSeenMessages.applyOffset(packet.offset())) {
+                 ServerGamePacketListenerImpl.LOGGER.warn("Failed to validate message acknowledgements from {}", this.player.getName().getString());
+@@ -2902,7 +2906,8 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     }
+ 
+-    public void addPendingMessage(PlayerChatMessage message) {
++    public void addPendingMessage(PlayerChatMessage message) { addPendingMessage(message, false); } // MultiPaper - add dontBroadcast parameter
++    public void addPendingMessage(PlayerChatMessage message, boolean dontBroadcast) { // MultiPaper - add dontBroadcast parameter
+         MessageSignature messagesignature = message.signature();
+ 
+         if (messagesignature != null) {
+@@ -2919,6 +2924,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+                 this.disconnect(Component.translatable("multiplayer.disconnect.too_many_pending_chats"), org.bukkit.event.player.PlayerKickEvent.Cause.TOO_MANY_PENDING_CHATS); // Paper - kick event cause
+             }
+ 
++            if (!dontBroadcast) AddPendingMessagePacket.broadcastAddMessage(message, this.player.getUUID()); // MultiPaper
+         }
+     }
+ 
+@@ -3860,6 +3866,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+         this.chatMessageChain.append((executor) -> {
+             this.player.setChatSession(session);
+             this.server.getPlayerList().broadcastAll(new ClientboundPlayerInfoUpdatePacket(EnumSet.of(ClientboundPlayerInfoUpdatePacket.Action.INITIALIZE_CHAT), List.of(this.player)), this.player); // Paper
++            MultiPaper.broadcastPacketToExternalServers(new SetPlayerChatStatePacket(player.getUUID(), session)); // MultiPaper
+             return CompletableFuture.completedFuture((Object) null);
+         });
+     }

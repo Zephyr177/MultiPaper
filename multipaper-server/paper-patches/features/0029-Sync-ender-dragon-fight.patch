@@ -1,0 +1,74 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Sun, 28 Nov 2021 16:34:05 +1000
+Subject: [PATCH] Sync ender dragon fight
+
+
+diff --git a/src/main/java/puregero/multipaper/externalserverprotocol/ExternalServerPacketSerializer.java b/src/main/java/puregero/multipaper/externalserverprotocol/ExternalServerPacketSerializer.java
+index ff5b08a3e27643b5e3153f3f058fd0a86090b347..868835ed6d8f1559daef7720c4f97faa6a30d25f 100644
+--- a/src/main/java/puregero/multipaper/externalserverprotocol/ExternalServerPacketSerializer.java
++++ b/src/main/java/puregero/multipaper/externalserverprotocol/ExternalServerPacketSerializer.java
+@@ -44,6 +44,7 @@ public class ExternalServerPacketSerializer {
+         addPacket(EntityRemovePacket.class, EntityRemovePacket::new);
+         addPacket(PlayerActionOnEntityPacket.class, PlayerActionOnEntityPacket::new);
+         addPacket(PlayerTouchEntityPacket.class, PlayerTouchEntityPacket::new);
++        addPacket(SetEndDragonFightDataPacket.class, SetEndDragonFightDataPacket::new);
+     }
+ 
+     private static void addPacket(Class<? extends ExternalServerPacket> clazz, Function<FriendlyByteBuf, ExternalServerPacket> deserializer) {
+diff --git a/src/main/java/puregero/multipaper/externalserverprotocol/SetEndDragonFightDataPacket.java b/src/main/java/puregero/multipaper/externalserverprotocol/SetEndDragonFightDataPacket.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..e13ee06225c73bcab684d41341a84f582a153cb8
+--- /dev/null
++++ b/src/main/java/puregero/multipaper/externalserverprotocol/SetEndDragonFightDataPacket.java
+@@ -0,0 +1,50 @@
++package puregero.multipaper.externalserverprotocol;
++
++import net.minecraft.network.FriendlyByteBuf;
++import net.minecraft.server.level.ServerLevel;
++import net.minecraft.world.level.dimension.end.EndDragonFight;
++import org.apache.logging.log4j.LogManager;
++import org.apache.logging.log4j.Logger;
++import org.bukkit.Bukkit;
++import org.bukkit.World;
++import org.bukkit.craftbukkit.CraftWorld;
++import puregero.multipaper.ExternalServerConnection;
++import puregero.multipaper.MultiPaper;
++
++import java.util.UUID;
++
++public class SetEndDragonFightDataPacket extends ExternalServerPacket {
++    private static final Logger LOGGER = LogManager.getLogger(SetEndDragonFightDataPacket.class.getSimpleName());
++
++    private final UUID world;
++    private final EndDragonFight.Data data;
++
++    public SetEndDragonFightDataPacket(ServerLevel level, EndDragonFight.Data data) {
++        this.world = level.getWorld().getUID();
++        this.data = data;
++    }
++
++    public SetEndDragonFightDataPacket(FriendlyByteBuf in) {
++        this.world = in.readUUID();
++        this.data = in.readJsonWithCodec(EndDragonFight.Data.CODEC);
++    }
++
++    @Override
++    public void write(FriendlyByteBuf out) {
++        out.writeUUID(this.world);
++        out.writeJsonWithCodec(EndDragonFight.Data.CODEC, this.data);
++    }
++
++    @Override
++    public void handle(ExternalServerConnection connection) {
++        MultiPaper.runSync(() -> {
++            World world = Bukkit.getWorld(this.world);
++            if (world instanceof CraftWorld craftWorld) {
++                EndDragonFight endDragonFight = craftWorld.getHandle().getDragonFight();
++                if (endDragonFight != null) {
++                    endDragonFight.load(this.data);
++                }
++            }
++        });
++    }
++}

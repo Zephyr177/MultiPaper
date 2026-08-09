@@ -1,0 +1,25 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Tue, 5 Apr 2022 13:08:48 +1000
+Subject: [PATCH] Tick death for external players
+
+
+diff --git a/net/minecraft/world/entity/LivingEntity.java b/net/minecraft/world/entity/LivingEntity.java
+index d5cebdd9b68bbdd0561636b6554e7b8bd08e1a97..f6342c8c8241132dd3365f131cee6be228cf6c38 100644
+--- a/net/minecraft/world/entity/LivingEntity.java
++++ b/net/minecraft/world/entity/LivingEntity.java
+@@ -639,6 +639,14 @@ public abstract class LivingEntity extends Entity implements Attackable {
+         return true;
+     }
+ 
++    // MultiPaper
++    public void tickDeathIfDead() {
++        if (this.isDeadOrDying() && this.level().shouldTickDeath(this)) {
++            this.tickDeath();
++        }
++    }
++    // MultiPaper end
++
+     protected void tickDeath() {
+         ++this.deathTime;
+         if (this.deathTime >= 20 && !this.level().isClientSide() && !this.isRemoved()) {

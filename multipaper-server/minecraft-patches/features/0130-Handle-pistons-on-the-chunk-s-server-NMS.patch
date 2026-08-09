@@ -1,0 +1,86 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Mon, 1 Aug 2022 13:28:37 +1000
+Subject: [PATCH] Handle pistons on the chunk's server
+
+
+diff --git a/net/minecraft/world/level/block/piston/PistonBaseBlock.java b/net/minecraft/world/level/block/piston/PistonBaseBlock.java
+index fb79c04d4367f4341189f1d556b605b64bcbff2c..2d538751fea0de0507ddadb28afa2e65e33b499c 100644
+--- a/net/minecraft/world/level/block/piston/PistonBaseBlock.java
++++ b/net/minecraft/world/level/block/piston/PistonBaseBlock.java
+@@ -31,6 +31,7 @@ import net.minecraft.world.level.block.state.StateDefinition;
+ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+ import net.minecraft.world.level.block.state.properties.BooleanProperty;
+ import net.minecraft.world.level.block.state.properties.PistonType;
++import net.minecraft.world.level.chunk.LevelChunk;
+ import net.minecraft.world.level.gameevent.GameEvent;
+ import net.minecraft.world.level.material.PushReaction;
+ import net.minecraft.world.level.pathfinder.PathComputationType;
+@@ -43,6 +44,7 @@ import org.bukkit.craftbukkit.block.CraftBlock;
+ import org.bukkit.event.block.BlockPistonRetractEvent;
+ import org.bukkit.event.block.BlockPistonExtendEvent;
+ import puregero.multipaper.MultiPaper;
++import puregero.multipaper.externalserverprotocol.PistonMoveBlockStartPacket;
+ import puregero.multipaper.mastermessagingprotocol.ChunkKey;
+ import puregero.multipaper.mastermessagingprotocol.messages.masterbound.RequestChunkOwnershipMessage;
+ import puregero.multipaper.mastermessagingprotocol.messages.serverbound.BooleanMessageReply;
+@@ -443,19 +445,21 @@ public class PistonBaseBlock extends DirectionalBlock {
+ 
+                 takeControlOfChunks.add(new ChunkPos(blockposition3)); // MultiPaper
+ 
+-                world.setBlock(blockposition3, iblockdata2, 68);
++                // world.setBlock(blockposition3, iblockdata2, 68); // MultiPaper - handled ourselves
+                 // Paper start - fix a variety of piston desync dupes
+                 if (!allowDesync) {
+                     iblockdata1 = world.getBlockState(oldPos);
+                     map.replace(oldPos, iblockdata1);
+                 }
+-                world.setBlockEntity(MovingPistonBlock.newMovingBlockEntity(blockposition3, iblockdata2, allowDesync ? list1.get(k) : iblockdata1, dir, retract, false));
++
++                PistonMoveBlockStartPacket.startBlockMove((ServerLevel) world, oldPos, blockposition3, dir, retract);
++                // world.setBlockEntity(MovingPistonBlock.newMovingBlockEntity(blockposition3, iblockdata2, allowDesync ? list1.get(k) : iblockdata1, dir, retract, false)); // MultiPaper - handled ourselves
+                 if (!allowDesync) {
+-                    world.setBlock(oldPos, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE | Block.UPDATE_MOVE_BY_PISTON | 1024); // set air to prevent later physics updates from seeing this block
++                    // world.setBlock(oldPos, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE | Block.UPDATE_MOVE_BY_PISTON | 1024); // set air to prevent later physics updates from seeing this block // MultiPaper - handled ourselves
+                 }
+                 // Paper end - fix a variety of piston desync dupes
+                 aiblockdata[j++] = iblockdata1;
+-                ((ServerLevel) world).getChunkSource().blockChanged(blockposition3); // MultiPaper
++                // ((ServerLevel) world).getChunkSource().blockChanged(blockposition3); // MultiPaper
+             }
+ 
+             if (retract) {
+@@ -515,6 +519,20 @@ public class PistonBaseBlock extends DirectionalBlock {
+                 world.updateNeighborsAt(blockposition1, Blocks.PISTON_HEAD);
+             }
+ 
++            // MultiPaper start - broadcast changes to sync other servers
++            LevelChunk chunk = world.getChunkIfLoaded(pos);
++            if (chunk != null) {
++                chunk.playerChunk.broadcastChangesToOtherServers(chunk);
++            }
++
++            if (retract) {
++                LevelChunk facingChunk = world.getChunkIfLoaded(blockposition1);
++                if (facingChunk != null) {
++                    facingChunk.playerChunk.broadcastChangesToOtherServers(facingChunk);
++                }
++            }
++            // MultiPaper end
++
+             return true;
+         }
+     }
+diff --git a/net/minecraft/world/level/block/piston/PistonMovingBlockEntity.java b/net/minecraft/world/level/block/piston/PistonMovingBlockEntity.java
+index fafe762078bdb6624ee437148b51900a9ff335b6..f794e95aba5668657e02cad9c071c34edd61e3df 100644
+--- a/net/minecraft/world/level/block/piston/PistonMovingBlockEntity.java
++++ b/net/minecraft/world/level/block/piston/PistonMovingBlockEntity.java
+@@ -34,7 +34,7 @@ public class PistonMovingBlockEntity extends BlockEntity {
+     private static final int TICKS_TO_EXTEND = 2;
+     private static final double PUSH_OFFSET = 0.01D;
+     public static final double TICK_MOVEMENT = 0.51D;
+-    private BlockState movedState = Blocks.AIR.defaultBlockState();
++    public BlockState movedState = Blocks.AIR.defaultBlockState(); // MultiPaper - make public
+     private Direction direction;
+     private boolean extending;
+     private boolean isSourcePiston;

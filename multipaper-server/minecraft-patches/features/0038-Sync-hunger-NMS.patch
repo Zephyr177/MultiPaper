@@ -1,0 +1,55 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Fri, 10 Dec 2021 22:34:14 +1000
+Subject: [PATCH] Sync hunger
+
+
+diff --git a/net/minecraft/world/food/FoodData.java b/net/minecraft/world/food/FoodData.java
+index e54af9ff2a786e919b8261aa27509be942e70261..4541259c1eaa6c894d07b604727040671a972004 100644
+--- a/net/minecraft/world/food/FoodData.java
++++ b/net/minecraft/world/food/FoodData.java
+@@ -8,6 +8,8 @@ import net.minecraft.world.entity.player.Player;
+ import net.minecraft.world.item.Item;
+ import net.minecraft.world.item.ItemStack;
+ import net.minecraft.world.level.GameRules;
++import puregero.multipaper.MultiPaper;
++import puregero.multipaper.externalserverprotocol.PlayerFoodUpdatePacket;
+ 
+ public class FoodData {
+ 
+@@ -37,6 +39,7 @@ public class FoodData {
+         this.foodLevel = Math.min(food + this.foodLevel, 20);
+         this.saturationLevel = Math.min(this.saturationLevel + (float) food * saturationModifier * 2.0F, (float) this.foodLevel);
+         if (this.entityhuman.level().purpurConfig.playerBurpWhenFull && this.foodLevel == 20 && oldValue < 20) this.entityhuman.burpDelay = this.entityhuman.level().purpurConfig.playerBurpDelay; // Purpur
++        MultiPaper.broadcastPacketToExternalServers((ServerPlayer) entityhuman, new PlayerFoodUpdatePacket(entityhuman)); // MultiPaper
+     }
+ 
+     public void eat(Item item, ItemStack stack) {
+@@ -65,12 +68,14 @@ public class FoodData {
+             this.exhaustionLevel -= 4.0F;
+             if (this.saturationLevel > 0.0F) {
+                 this.saturationLevel = Math.max(this.saturationLevel - 1.0F, 0.0F);
++                MultiPaper.broadcastPacketToExternalServers((ServerPlayer) entityhuman, new PlayerFoodUpdatePacket(entityhuman)); // MultiPaper
+             } else if (enumdifficulty != Difficulty.PEACEFUL) {
+                 // CraftBukkit start
+                 org.bukkit.event.entity.FoodLevelChangeEvent event = org.bukkit.craftbukkit.event.CraftEventFactory.callFoodLevelChangeEvent(player, Math.max(this.foodLevel - 1, 0));
+ 
+                 if (!event.isCancelled()) {
+                     this.foodLevel = event.getFoodLevel();
++                    MultiPaper.broadcastPacketToExternalServers((ServerPlayer) entityhuman, new PlayerFoodUpdatePacket(entityhuman)); // MultiPaper
+                 }
+ 
+                 ((ServerPlayer) player).connection.send(new ClientboundSetHealthPacket(((ServerPlayer) player).getBukkitEntity().getScaledHealth(), this.foodLevel, this.saturationLevel));
+@@ -156,10 +161,12 @@ public class FoodData {
+ 
+     public void setFoodLevel(int foodLevel) {
+         this.foodLevel = foodLevel;
++        MultiPaper.broadcastPacketToExternalServers((ServerPlayer) entityhuman, new PlayerFoodUpdatePacket(entityhuman)); // MultiPaper
+     }
+ 
+     public void setSaturation(float saturationLevel) {
+         this.saturationLevel = saturationLevel;
++        MultiPaper.broadcastPacketToExternalServers((ServerPlayer) entityhuman, new PlayerFoodUpdatePacket(entityhuman)); // MultiPaper
+     }
+ 
+     public void setExhaustion(float exhaustion) {

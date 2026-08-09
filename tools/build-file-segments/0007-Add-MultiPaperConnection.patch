@@ -1,0 +1,18 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Mon, 15 Nov 2021 13:01:36 +1000
+Subject: [PATCH] Add MultiPaperConnection
+
+
+diff --git a/build.gradle.kts b/build.gradle.kts
+index 76ccc9db1503b60ab89f625915b1274e1c8a82e9..a4654ae75a8b103b52ca2d5c24d3eefad3e598e4 100644
+--- a/build.gradle.kts
++++ b/build.gradle.kts
+@@ -13,6 +13,7 @@ configurations.named(log4jPlugins.compileClasspathConfigurationName) {
+ val alsoShade: Configuration by configurations.creating
+ 
+ dependencies {
++    implementation(project(":multipaper-mastermessagingprotocol")) // MultiPaper
+     // Purpur start
+     implementation(project(":multipaper-api")) // MultiPaper // Purpur
+     implementation("io.papermc.paper:paper-mojangapi:${project.version}") {

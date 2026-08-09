@@ -1,0 +1,18 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Sat, 26 Feb 2022 18:39:19 +1000
+Subject: [PATCH] Sync whitelist toggle
+
+
+diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
+index 12cff956df6247632ffda2cec8c60fc96c8913f7..59bb0918966eb578b8179db43d14bc26a758a768 100644
+--- a/net/minecraft/server/players/PlayerList.java
++++ b/net/minecraft/server/players/PlayerList.java
+@@ -1384,6 +1384,7 @@ public abstract class PlayerList {
+     public void setUsingWhiteList(boolean whitelistEnabled) {
+         new com.destroystokyo.paper.event.server.WhitelistToggleEvent(whitelistEnabled).callEvent();
+         this.doWhiteList = whitelistEnabled;
++        if (!WhitelistTogglePacket.updatingWhitelistToggle) MultiPaper.broadcastPacketToExternalServers(new WhitelistTogglePacket(whitelistEnabled)); // MultiPaper
+     }
+ 
+     public List<ServerPlayer> getPlayersWithAddress(String ip) {

@@ -1,0 +1,35 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Fri, 14 Jan 2022 10:15:23 +1000
+Subject: [PATCH] Sync respawn locations
+
+
+diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
+index 463e2329c5d2089c02969c3a0f9f4e991b92ad88..17cc46abff1224f0c3f47631307fce8b09e9dea2 100644
+--- a/net/minecraft/server/level/ServerPlayer.java
++++ b/net/minecraft/server/level/ServerPlayer.java
+@@ -231,11 +231,11 @@ public class ServerPlayer extends Player {
+     @Nullable
+     private Vec3 enteredLavaOnVehiclePosition;
+     private SectionPos lastSectionPos;
+-    private ResourceKey<Level> respawnDimension;
++    public ResourceKey<Level> respawnDimension; // MultiPaper - make public
+     @Nullable
+-    private BlockPos respawnPosition;
+-    private boolean respawnForced;
+-    private float respawnAngle;
++    public BlockPos respawnPosition; // MultiPaper - make public
++    public boolean respawnForced; // MultiPaper - make public
++    public float respawnAngle; // MultiPaper - make public
+     private final TextFilter textFilter;
+     private boolean textFilteringEnabled;
+     private boolean allowsListing;
+@@ -2481,6 +2481,8 @@ public class ServerPlayer extends Player {
+             this.respawnForced = false;
+         }
+ 
++        PlayerSetRespawnPosition.broadcastRespawnPosition(this); // MultiPaper
++
+         return true; // Paper
+     }
+ 

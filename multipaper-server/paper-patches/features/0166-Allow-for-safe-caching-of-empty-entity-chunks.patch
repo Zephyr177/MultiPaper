@@ -1,0 +1,33 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Thu, 23 Jun 2022 19:51:08 +1000
+Subject: [PATCH] Allow for safe caching of empty entity chunks
+
+This allows MultiPaper to not have to write empty entity chunks
+when they are already empty on the disk.
+
+diff --git a/src/main/java/puregero/multipaper/MultiPaperEntitiesHandler.java b/src/main/java/puregero/multipaper/MultiPaperEntitiesHandler.java
+index 0854d7c65ebd93e63d3898b51f3bb6af2a09467e..1b11d3e09766bd7412ce1de79fc1f1661eabdc21 100644
+--- a/src/main/java/puregero/multipaper/MultiPaperEntitiesHandler.java
++++ b/src/main/java/puregero/multipaper/MultiPaperEntitiesHandler.java
+@@ -22,6 +22,7 @@ import net.minecraft.world.item.ItemStack;
+ import net.minecraft.world.level.ChunkPos;
+ import net.minecraft.world.level.chunk.ChunkAccess;
+ import net.minecraft.world.level.chunk.LevelChunk;
++import net.minecraft.world.level.chunk.storage.EntityStorage;
+ import net.minecraft.world.phys.Vec3;
+ import org.apache.commons.lang.ArrayUtils;
+ import org.apache.logging.log4j.LogManager;
+@@ -117,6 +118,12 @@ public class MultiPaperEntitiesHandler {
+     }
+ 
+     public static void onChunkMove(Entity entity, BlockPos to, BlockPos from) {
++        // MultiPaper start - allow for safe caching of empty entity chunks
++        if (entity.shouldBeSaved()) {
++            ((EntityStorage) ((ServerLevel) entity.level).entityManager.permanentStorage).emptyChunks.remove(new ChunkPos(to).toLong());
++        }
++        // MultiPaper end - allow for safe caching of empty entity chunks
++
+         if (from.equals(BlockPos.ZERO)) return; // They just spawned
+         if (!entity.shouldBeSaved() && !(!entity.isPassenger() && entity.isVehicle() && entity.hasExactlyOnePlayerPassenger()) && !(MultiPaperConfiguration.get().optimizations.reducePlayerPositionUpdatesInUnloadedChunks && MultiPaper.isRealPlayer(entity))) return; // Entity shouldn't be synced (eg players)
+ 

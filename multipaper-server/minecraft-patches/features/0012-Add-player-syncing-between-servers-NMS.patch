@@ -1,0 +1,401 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Mon, 15 Nov 2021 20:30:35 +1000
+Subject: [PATCH] Add player syncing between servers
+
+
+diff --git a/net/minecraft/network/Connection.java b/net/minecraft/network/Connection.java
+index 13144ea01bc27db95a13b267d39529b012a4c9c4..76796539d0aaf09ae34a8b45613bbb8cf825f801 100644
+--- a/net/minecraft/network/Connection.java
++++ b/net/minecraft/network/Connection.java
+@@ -48,6 +48,8 @@ import org.slf4j.Logger;
+ import org.slf4j.Marker;
+ import org.slf4j.MarkerFactory;
+ 
++import puregero.multipaper.MultiPaper;
++
+ public class Connection extends SimpleChannelInboundHandler<Packet<?>> {
+ 
+     private static final float AVERAGE_PACKETS_SMOOTHING = 0.75F;
+@@ -658,6 +660,9 @@ public class Connection extends SimpleChannelInboundHandler<Packet<?>> {
+         this.preparing = false;
+         clearPacketQueue(); // Paper
+         // Spigot End
++        if (getPlayer() != null && getPlayer().hasRegisteredOnMaster) {
++            MultiPaper.sendPlayerDisconnect(getPlayer()); // MultiPaper
++        }
+         if (this.channel == null) {
+             this.delayedDisconnect = disconnectReason;
+         }
+diff --git a/net/minecraft/network/FriendlyByteBuf.java b/net/minecraft/network/FriendlyByteBuf.java
+index 1f4b64a5f812376c499c98cb4be62469bd0b7dbe..9b69dee2dc5cc23440ab4daf2052796d7eaf2f1f 100644
+--- a/net/minecraft/network/FriendlyByteBuf.java
++++ b/net/minecraft/network/FriendlyByteBuf.java
+@@ -98,6 +98,8 @@ public class FriendlyByteBuf extends ByteBuf {
+     private static final int MAX_PUBLIC_KEY_LENGTH = 512;
+     private static final Gson GSON = new Gson();
+ 
++    public long maxNbtSize = 2097152L; // MultiPaper
++
+     public static boolean hasItemSerializeEvent = false; // Purpur
+ 
+     public FriendlyByteBuf(ByteBuf parent) {
+@@ -650,7 +652,7 @@ public class FriendlyByteBuf extends ByteBuf {
+ 
+     @Nullable
+     public CompoundTag readNbt() {
+-        return this.readNbt(new NbtAccounter(2097152L));
++        return this.readNbt(new NbtAccounter(maxNbtSize)); // MultiPaper
+     }
+ 
+     @Nullable
+diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
+index 8c536848a4b5910096a6ef78a7c3bfc9336abc2f..a8eb0db33a9b15b5b32d0533e6432a8d6d445fe2 100644
+--- a/net/minecraft/server/MinecraftServer.java
++++ b/net/minecraft/server/MinecraftServer.java
+@@ -1424,6 +1424,8 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+             this.status = this.buildServerStatus();
+         }
+ 
++        MultiPaper.tick(); // MultiPaper
++
+         // Paper start - incremental chunk and player saving
+         int playerSaveInterval = io.papermc.paper.configuration.GlobalConfiguration.get().playerAutoSave.rate;
+         if (playerSaveInterval < 0) {
+diff --git a/net/minecraft/server/level/ServerEntity.java b/net/minecraft/server/level/ServerEntity.java
+index fb11b020d52988360562db23d8568e5ef37e21c8..820e48e45768fc97a0d816b399e0914d8feb2c88 100644
+--- a/net/minecraft/server/level/ServerEntity.java
++++ b/net/minecraft/server/level/ServerEntity.java
+@@ -46,6 +46,7 @@ import net.minecraft.server.network.ServerPlayerConnection;
+ import net.minecraft.util.Mth;
+ import org.bukkit.entity.Player;
+ import org.bukkit.event.player.PlayerVelocityEvent;
++import puregero.multipaper.MultiPaper;
+ // CraftBukkit end
+ 
+ public class ServerEntity {
+@@ -405,7 +406,7 @@ public class ServerEntity {
+ 
+     private void broadcastAndSend(Packet<?> packet) {
+         this.broadcast.accept(packet);
+-        if (this.entity instanceof ServerPlayer) {
++        if (this.entity instanceof ServerPlayer && MultiPaper.isRealPlayer(this.entity)) { // MultiPaper - only send to real player
+             ((ServerPlayer) this.entity).connection.send(packet);
+         }
+ 
+diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
+index 0249eeb3937cf48cea13846a7e39b248947e21a4..2a0f204e53f4f5f210e29c1c82e2c552bfc70bdb 100644
+--- a/net/minecraft/server/level/ServerPlayer.java
++++ b/net/minecraft/server/level/ServerPlayer.java
+@@ -10,6 +10,7 @@ import com.mojang.serialization.DataResult;
+ import com.mojang.serialization.Dynamic;
+ import java.net.InetSocketAddress;
+ import java.net.SocketAddress;
++import java.util.ArrayList;
+ import java.util.Collection;
+ import java.util.Iterator;
+ import java.util.List;
+@@ -185,6 +186,12 @@ import org.bukkit.event.player.PlayerTeleportEvent;
+ import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
+ import org.bukkit.event.player.PlayerToggleSneakEvent;
+ import org.bukkit.inventory.MainHand;
++import puregero.multipaper.ExternalServerConnection;
++import puregero.multipaper.MultiPaper;
++import puregero.multipaper.externalserverprotocol.PlayerChangeDimensionPacket;
++import puregero.multipaper.externalserverprotocol.PlayerChangeGamemodePacket;
++import puregero.multipaper.externalserverprotocol.PlayerCreatePacket;
++import puregero.multipaper.externalserverprotocol.PlayerRemovePacket;
+ // CraftBukkit end
+ 
+ public class ServerPlayer extends Player {
+@@ -237,6 +244,8 @@ public class ServerPlayer extends Player {
+     private boolean textFilteringEnabled;
+     private boolean allowsListing;
+     public WardenSpawnTracker wardenSpawnTracker;
++    public boolean hasRegisteredOnMaster = false; // MultiPaper
++    public boolean didMultiPaperJoin = false; // MultiPaper
+     public final ContainerSynchronizer containerSynchronizer;
+     private final ContainerListener containerListener;
+     @Nullable
+@@ -244,7 +253,7 @@ public class ServerPlayer extends Player {
+     private int containerCounter;
+     public int latency;
+     public boolean wonGame;
+-    private int containerUpdateDelay; // Paper
++    public int containerUpdateDelay; // Paper // MultiPaper - make public
+     public long loginTime; // Paper
+     public int patrolSpawnDelay; // Paper - per player patrol spawns
+     // Paper start - cancellable death event
+@@ -1315,7 +1324,27 @@ public class ServerPlayer extends Player {
+             }
+             // Paper end
+ 
+-            this.spawnInvulnerableTime = worldserver.purpurConfig.playerSpawnInvulnerableTicks; // Purpur
++            // MultiPaper start
++            ServerLevel destination = worldserver;
++            List<ExternalServerConnection> serversToCreatePlayerOn = new ArrayList<>();
++            MultiPaper.forEachExternalServer(externalServer -> {
++                if (externalServer.getConnection() != null && externalServer.getConnection().isOpen()) {
++                    boolean subscribedToSoruce = externalServer.getConnection().subscribedWorlds.contains(worldserver1.getWorld().getName());
++                    boolean subscribedToDestination = externalServer.getConnection().subscribedWorlds.contains(destination.getWorld().getName());
++
++                    if (subscribedToSoruce && subscribedToDestination) {
++                        externalServer.getConnection().send(new PlayerChangeDimensionPacket(this, false));
++                    } else if (subscribedToDestination) {
++                        serversToCreatePlayerOn.add(externalServer.getConnection());
++                    } else if (subscribedToSoruce) {
++                        externalServer.getConnection().send(new PlayerRemovePacket(this));
++                    }
++                }
++            });
++            PlayerCreatePacket.sendPlayer(this, serversToCreatePlayerOn.toArray(ExternalServerConnection[]::new));
++            // MultiPaper end
++            
++	    this.spawnInvulnerableTime = worldserver.purpurConfig.playerSpawnInvulnerableTicks; // Purpur
+             return this;
+         }
+     }
+@@ -2030,6 +2059,8 @@ public class ServerPlayer extends Player {
+                 this.setCamera(this);
+             }
+ 
++            MultiPaper.broadcastPacketToExternalServers(this, new PlayerChangeGamemodePacket(this)); // MultiPaper
++
+             this.onUpdateAbilities();
+             this.updateEffectVisibility();
+             return event; // Paper
+diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+index 255b422078880b46dfa6f5140f6c92fef057d09e..b4043c355bc1d8ca7c0da477338d2ed02a15d065 100644
+--- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
++++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+@@ -29,6 +29,8 @@ import java.util.function.UnaryOperator;
+ import java.util.stream.Collectors;
+ import java.util.stream.Stream;
+ import javax.annotation.Nullable;
++
++import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+ import net.minecraft.ChatFormatting;
+ import net.minecraft.CrashReport;
+ import net.minecraft.CrashReportCategory;
+@@ -175,7 +177,6 @@ import net.minecraft.world.level.block.entity.CommandBlockEntity;
+ import net.minecraft.world.level.block.entity.JigsawBlockEntity;
+ import net.minecraft.world.level.block.entity.SignBlockEntity;
+ import net.minecraft.world.level.block.entity.StructureBlockEntity;
+-import net.minecraft.world.level.block.state.BlockBehaviour;
+ import net.minecraft.world.level.block.state.BlockState;
+ import net.minecraft.world.phys.AABB;
+ import net.minecraft.world.phys.BlockHitResult;
+@@ -227,7 +228,6 @@ import org.bukkit.event.inventory.InventoryCreativeEvent;
+ import org.bukkit.event.inventory.InventoryType.SlotType;
+ import org.bukkit.event.inventory.SmithItemEvent;
+ import org.bukkit.event.player.AsyncPlayerChatEvent;
+-import org.bukkit.event.player.PlayerAnimationEvent;
+ import org.bukkit.event.player.PlayerAnimationType;
+ import org.bukkit.event.player.PlayerChatEvent;
+ import org.bukkit.event.player.PlayerCommandPreprocessEvent;
+@@ -247,6 +247,9 @@ import org.bukkit.inventory.CraftingInventory;
+ import org.bukkit.inventory.EquipmentSlot;
+ import org.bukkit.inventory.InventoryView;
+ import org.bukkit.inventory.SmithingInventory;
++import puregero.multipaper.ExternalPlayer;
++import puregero.multipaper.MultiPaper;
++import puregero.multipaper.externalserverprotocol.PlayerRemovePacket;
+ // CraftBukkit end
+ 
+ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, TickablePacketListener, ServerGamePacketListener {
+@@ -552,7 +555,8 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+         PlayerKickEvent event = new PlayerKickEvent(this.player.getBukkitEntity(), reason, leaveMessage, cause); // Paper - Adventure & kick event reason
+ 
+-        if (this.cserver.getServer().isRunning()) {
++        boolean shouldKick = reason != PlayerRemovePacket.EXTERNAL_DISCONNECT_COMPONENT && !(reason == PlayerRemovePacket.LOGGED_IN_FROM_ANOTHER_LOCATION && this.player instanceof ExternalPlayer); // MultiPaper - don't run kick event for external disconnects
++        if (this.cserver.getServer().isRunning() && shouldKick) { // MultiPaper
+             this.cserver.getPluginManager().callEvent(event);
+         }
+ 
+@@ -565,6 +569,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+         // CraftBukkit end
+ 
+         this.player.quitReason = org.bukkit.event.player.PlayerQuitEvent.QuitReason.KICKED; // Paper
++        if (shouldKick) // MultiPaper
+         this.connection.send(new ClientboundDisconnectPacket(ichatbasecomponent), PacketSendListener.thenRun(() -> {
+             this.connection.disconnect(ichatbasecomponent);
+         }));
+@@ -2269,7 +2274,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+         this.player.disconnect();
+         // Paper start - Adventure
+         quitMessage = quitMessage == null ? this.server.getPlayerList().remove(this.player) : this.server.getPlayerList().remove(this.player, quitMessage); // Paper - pass in quitMessage to fix kick message not being used
+-        if ((quitMessage != null) && !quitMessage.equals(net.kyori.adventure.text.Component.empty())) {
++        if ((quitMessage != null) && !quitMessage.equals(net.kyori.adventure.text.Component.empty()) && MultiPaper.isRealPlayer(this.player)) { // MultiPaper - Only run for real players
+             this.server.getPlayerList().broadcastSystemMessage(PaperAdventure.asVanilla(quitMessage), false);
+             // Paper end
+         }
+diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
+index 824f31b68b38f2f8642fb9d59a123cfdaffbb7b2..30518e842c67ea383177d83b467ae2fe722f8bb2 100644
+--- a/net/minecraft/server/players/PlayerList.java
++++ b/net/minecraft/server/players/PlayerList.java
+@@ -15,6 +15,7 @@ import java.net.SocketAddress;
+ import java.nio.file.Path;
+ import java.text.SimpleDateFormat;
+ import java.time.Instant;
++import java.util.ArrayList;
+ import java.util.Collection;
+ import java.util.EnumSet;
+ import java.util.Iterator;
+@@ -45,33 +46,7 @@ import net.minecraft.network.chat.MutableComponent;
+ import net.minecraft.network.chat.OutgoingChatMessage;
+ import net.minecraft.network.chat.PlayerChatMessage;
+ import net.minecraft.network.protocol.Packet;
+-import net.minecraft.network.protocol.game.ClientboundChangeDifficultyPacket;
+-import net.minecraft.network.protocol.game.ClientboundCustomPayloadPacket;
+-import net.minecraft.network.protocol.game.ClientboundEntityEventPacket;
+-import net.minecraft.network.protocol.game.ClientboundGameEventPacket;
+-import net.minecraft.network.protocol.game.ClientboundInitializeBorderPacket;
+-import net.minecraft.network.protocol.game.ClientboundLoginPacket;
+-import net.minecraft.network.protocol.game.ClientboundPlayerAbilitiesPacket;
+-import net.minecraft.network.protocol.game.ClientboundPlayerInfoRemovePacket;
+-import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
+-import net.minecraft.network.protocol.game.ClientboundRespawnPacket;
+-import net.minecraft.network.protocol.game.ClientboundSetBorderCenterPacket;
+-import net.minecraft.network.protocol.game.ClientboundSetBorderLerpSizePacket;
+-import net.minecraft.network.protocol.game.ClientboundSetBorderSizePacket;
+-import net.minecraft.network.protocol.game.ClientboundSetBorderWarningDelayPacket;
+-import net.minecraft.network.protocol.game.ClientboundSetBorderWarningDistancePacket;
+-import net.minecraft.network.protocol.game.ClientboundSetCarriedItemPacket;
+-import net.minecraft.network.protocol.game.ClientboundSetChunkCacheRadiusPacket;
+-import net.minecraft.network.protocol.game.ClientboundSetDefaultSpawnPositionPacket;
+-import net.minecraft.network.protocol.game.ClientboundSetExperiencePacket;
+-import net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket;
+-import net.minecraft.network.protocol.game.ClientboundSetSimulationDistancePacket;
+-import net.minecraft.network.protocol.game.ClientboundSetTimePacket;
+-import net.minecraft.network.protocol.game.ClientboundSoundPacket;
+-import net.minecraft.network.protocol.game.ClientboundUpdateEnabledFeaturesPacket;
+-import net.minecraft.network.protocol.game.ClientboundUpdateMobEffectPacket;
+-import net.minecraft.network.protocol.game.ClientboundUpdateRecipesPacket;
+-import net.minecraft.network.protocol.game.ClientboundUpdateTagsPacket;
++import net.minecraft.network.protocol.game.*;
+ import net.minecraft.network.protocol.status.ServerStatus;
+ import net.minecraft.resources.ResourceKey;
+ import net.minecraft.server.MinecraftServer;
+@@ -128,6 +103,13 @@ import org.bukkit.event.player.PlayerQuitEvent;
+ import org.bukkit.event.player.PlayerRespawnEvent;
+ import org.bukkit.event.player.PlayerRespawnEvent.RespawnReason;
+ import org.bukkit.event.player.PlayerSpawnChangeEvent;
++import puregero.multipaper.ExternalPlayer;
++import puregero.multipaper.ExternalServerConnection;
++import puregero.multipaper.MultiPaper;
++import puregero.multipaper.externalserverprotocol.PlayerChangeDimensionPacket;
++import puregero.multipaper.externalserverprotocol.PlayerCreatePacket;
++import puregero.multipaper.externalserverprotocol.PlayerRemovePacket;
++import puregero.multipaper.externalserverprotocol.PlayerRespawnPacket;
+ // CraftBukkit end
+ 
+ public abstract class PlayerList {
+@@ -204,6 +186,20 @@ public abstract class PlayerList {
+             s = gameprofile.getName();
+         }
+ 
++        // MultiPaper start
++        if (!MultiPaper.sendPlayerConnect(player).join()) {
++            Component chatmessage = Component.literal("You are already logged into another server.");
++            connection.send(new ClientboundDisconnectPacket(chatmessage));
++            connection.disconnect(chatmessage);
++            return;
++        }
++        player.hasRegisteredOnMaster = true;
++        if (!connection.isConnected()) {
++            MultiPaper.sendPlayerDisconnect(player); // MultiPaper
++            return;
++        }
++        // MultiPaper end
++
+         CompoundTag nbttagcompound = this.load(player);
+         ResourceKey resourcekey;
+         // CraftBukkit start - Better rename detection
+@@ -605,11 +601,12 @@ public abstract class PlayerList {
+             entityplayer.closeContainer(org.bukkit.event.inventory.InventoryCloseEvent.Reason.DISCONNECT); // Paper
+         }
+ 
+-        PlayerQuitEvent playerQuitEvent = new PlayerQuitEvent(entityplayer.getBukkitEntity(), leaveMessage, entityplayer.quitReason); // Paper - Adventure & quit reason
+-        this.cserver.getPluginManager().callEvent(playerQuitEvent);
++
++        PlayerQuitEvent playerQuitEvent = new PlayerQuitEvent(entityplayer.getBukkitEntity(), leaveMessage, entityplayer.quitReason); // Paper - quit reason
++        if (MultiPaper.isRealPlayer(entityplayer)) this.cserver.getPluginManager().callEvent(playerQuitEvent); // MultiPaper - don't run for external players
+         entityplayer.getBukkitEntity().disconnect(playerQuitEvent.getQuitMessage());
+ 
+-        if (server.isSameThread()) entityplayer.doTick(); // SPIGOT-924 // Paper - don't tick during emergency shutdowns (Watchdog)
++        if (server.isSameThread() && MultiPaper.isRealPlayer(entityplayer)) entityplayer.doTick(); // SPIGOT-924 // Paper - don't tick during emergency shutdowns (Watchdog) // MultiPaper - don't run for external players
+         // CraftBukkit end
+ 
+         // Paper start - Remove from collideRule team if needed
+@@ -685,6 +682,9 @@ public abstract class PlayerList {
+         this.cserver.getScoreboardManager().removePlayer(entityplayer.getBukkitEntity());
+         // CraftBukkit end
+ 
++
++        MultiPaper.onPlayerDisconnect(entityplayer); // MultiPaper
++
+         return playerQuitEvent.quitMessage(); // Paper - Adventure
+     }
+ 
+@@ -807,6 +807,12 @@ public abstract class PlayerList {
+ 
+     public ServerPlayer respawn(ServerPlayer entityplayer, ServerLevel worldserver, boolean flag, Location location, boolean avoidSuffocation, RespawnReason reason, org.bukkit.event.player.PlayerRespawnEvent.RespawnFlag...respawnFlags) {
+         // Paper end
++        // Multipaper start
++        if (MultiPaper.isExternalPlayer(entityplayer)) {
++            ((ExternalPlayer) entityplayer).externalServerConnection.send(new PlayerRespawnPacket(entityplayer, worldserver, flag, location, avoidSuffocation, respawnFlags));
++            return entityplayer;
++        }
++        // MultiPaper end
+         entityplayer.stopRiding(); // CraftBukkit
+         this.players.remove(entityplayer);
+         this.playersByName.remove(entityplayer.getScoreboardName().toLowerCase(java.util.Locale.ROOT)); // Spigot
+@@ -990,6 +996,26 @@ public abstract class PlayerList {
+         entityplayer1.spawnInvulnerableTime = entityplayer1.level().purpurConfig.playerSpawnInvulnerableTicks; // Purpur
+ 
+         // CraftBukkit end
++
++        // MultiPaper start
++        List<ExternalServerConnection> serversToCreatePlayerOn = new ArrayList<>();
++        MultiPaper.forEachExternalServer(externalServer -> {
++            if (externalServer.getConnection() != null && externalServer.getConnection().isOpen()) {
++                boolean subscribedToSoruce = externalServer.getConnection().subscribedWorlds.contains(fromWorld.getName());
++                boolean subscribedToDestination = externalServer.getConnection().subscribedWorlds.contains(worldserver1.getWorld().getName());
++
++                if (subscribedToSoruce && subscribedToDestination) {
++                    externalServer.getConnection().send(new PlayerChangeDimensionPacket(entityplayer1, !flag));
++                } else if (subscribedToDestination) {
++                    serversToCreatePlayerOn.add(externalServer.getConnection());
++                } else if (subscribedToSoruce) {
++                    externalServer.getConnection().send(new PlayerRemovePacket(entityplayer1));
++                }
++            }
++        });
++        PlayerCreatePacket.sendPlayer(entityplayer1, serversToCreatePlayerOn.toArray(ExternalServerConnection[]::new));
++        // MultiPaper end
++
+         return entityplayer1;
+     }
+ 
+@@ -1000,6 +1026,20 @@ public abstract class PlayerList {
+         this.sendPlayerPermissionLevel(player, i);
+     }
+ 
++    // MultiPaper start - Add player manually
++    public void addPlayer(ServerPlayer player) {
++        players.add(player);
++        playersByUUID.put(player.getUUID(), player);
++        playersByName.put(player.getScoreboardName().toLowerCase(), player);
++    }
++
++    public void removePlayer(ServerPlayer player) {
++        players.remove(player);
++        playersByUUID.remove(player.getUUID());
++        playersByName.remove(player.getScoreboardName().toLowerCase());
++    }
++    // MultiPaper end
++
+     public void tick() {
+         if (++this.sendAllPlayerInfoIn > 600) {
+             // CraftBukkit start

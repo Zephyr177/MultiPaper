@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Tue, 5 Apr 2022 13:08:48 +1000
+Subject: [PATCH] Tick death for external players
+
+
+diff --git a/src/main/java/puregero/multipaper/MultiPaper.java b/src/main/java/puregero/multipaper/MultiPaper.java
+index 12e42d35111bef768c42e6a9d2a520a142c8bea0..f7fbe93557be9b62fc6491a100afc31bc08c2844 100644
+--- a/src/main/java/puregero/multipaper/MultiPaper.java
++++ b/src/main/java/puregero/multipaper/MultiPaper.java
+@@ -95,6 +95,8 @@ public class MultiPaper {
+                 if (player.takeXpDelay > 0) {
+                     --player.takeXpDelay;
+                 }
++
++                externalPlayer.tickDeathIfDead();
+             }
+ 
+             player.syncExperience();

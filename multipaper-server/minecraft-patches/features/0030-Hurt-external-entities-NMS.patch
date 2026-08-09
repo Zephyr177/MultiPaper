@@ -1,0 +1,77 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Sun, 28 Nov 2021 22:07:06 +1000
+Subject: [PATCH] Hurt external entities
+
+
+diff --git a/net/minecraft/world/damagesource/DamageSource.java b/net/minecraft/world/damagesource/DamageSource.java
+index c8860f20956a2819da001e93938249452bf7cb49..5921e5602a5cf0d34159c5c2886abf1cde33883f 100644
+--- a/net/minecraft/world/damagesource/DamageSource.java
++++ b/net/minecraft/world/damagesource/DamageSource.java
+@@ -70,7 +70,7 @@ public class DamageSource {
+         return this.causingEntity != this.directEntity;
+     }
+ 
+-    private DamageSource(Holder<DamageType> type, @Nullable Entity source, @Nullable Entity attacker, @Nullable Vec3 position) {
++    public DamageSource(Holder<DamageType> type, @Nullable Entity source, @Nullable Entity attacker, @Nullable Vec3 position) { // MultiPaper - make public
+         this.type = type;
+         this.causingEntity = attacker;
+         this.directEntity = source;
+diff --git a/net/minecraft/world/damagesource/DamageSources.java b/net/minecraft/world/damagesource/DamageSources.java
+index 4a5d2e263d2bbee96bde7012d3385fa33860bc1b..0fc371b92ca9c490d38c7ab8af7f54b3b7e28673 100644
+--- a/net/minecraft/world/damagesource/DamageSources.java
++++ b/net/minecraft/world/damagesource/DamageSources.java
+@@ -1,6 +1,8 @@
+ package net.minecraft.world.damagesource;
+ 
+ import javax.annotation.Nullable;
++
++import net.minecraft.core.Holder;
+ import net.minecraft.core.Registry;
+ import net.minecraft.core.RegistryAccess;
+ import net.minecraft.core.registries.Registries;
+@@ -87,6 +89,12 @@ public class DamageSources {
+         return new DamageSource(this.damageTypes.getHolderOrThrow(key), source, attacker);
+     }
+ 
++    // MultiPaper start
++    public Holder<DamageType> getDamageType(ResourceKey<DamageType> key) {
++        return this.damageTypes.getHolderOrThrow(key);
++    }
++    // MultiPaper end
++
+     public DamageSource inFire() {
+         return this.inFire;
+     }
+diff --git a/net/minecraft/world/entity/LivingEntity.java b/net/minecraft/world/entity/LivingEntity.java
+index 253a25705139180fe81e04d687a182185eb3288b..c9ab2608502abac1724cb1d7a09a90061c66540a 100644
+--- a/net/minecraft/world/entity/LivingEntity.java
++++ b/net/minecraft/world/entity/LivingEntity.java
+@@ -140,8 +140,11 @@ import org.bukkit.event.entity.EntityRegainHealthEvent;
+ import org.bukkit.event.entity.EntityResurrectEvent;
+ import org.bukkit.event.entity.EntityTeleportEvent;
+ import org.bukkit.event.player.PlayerItemConsumeEvent;
++import puregero.multipaper.ExternalServerConnection;
+ import puregero.multipaper.MultiPaper;
++import puregero.multipaper.MultiPaperEntityInteractHandler;
+ import puregero.multipaper.externalserverprotocol.EntityUpdatePacket;
++import puregero.multipaper.externalserverprotocol.HurtEntityPacket;
+ // CraftBukkit end
+ 
+ 
+@@ -1421,6 +1424,15 @@ public abstract class LivingEntity extends Entity implements Attackable {
+ 
+     @Override
+     public boolean hurt(DamageSource source, float amount) {
++        // MultiPaper start
++        ExternalServerConnection owner = MultiPaperEntityInteractHandler.getOwner(this);
++        if (owner != null) {
++            owner.send(new HurtEntityPacket(this, source, amount, CraftEventFactory.entityDamage, CraftEventFactory.blockDamage));
++            CraftEventFactory.entityDamage = null;
++            CraftEventFactory.blockDamage = null;
++            return false;
++        }
++        // MultiPaper end
+         if (this.isInvulnerableTo(source)) {
+             return false;
+         } else if (this.level().isClientSide) {

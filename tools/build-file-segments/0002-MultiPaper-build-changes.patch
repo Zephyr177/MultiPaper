@@ -1,0 +1,37 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Mon, 15 Nov 2021 02:34:43 +1000
+Subject: [PATCH] MultiPaper build changes
+
+
+diff --git a/build.gradle.kts b/build.gradle.kts
+index 92118ece03afbe49bbe4dbe8a54c6d434434bd0c..2d2664b8e2394fd102c975776b34195381b83ac2 100644
+--- a/build.gradle.kts
++++ b/build.gradle.kts
+@@ -14,7 +14,7 @@ val alsoShade: Configuration by configurations.creating
+ 
+ dependencies {
+     // Purpur start
+-    implementation(project(":purpur-api"))
++    implementation(project(":multipaper-api")) // MultiPaper // Purpur
+     implementation("io.papermc.paper:paper-mojangapi:${project.version}") {
+         exclude("io.papermc.paper", "paper-api")
+     }
+@@ -89,13 +89,16 @@ tasks.jar {
+     manifest {
+         val git = Git(rootProject.layout.projectDirectory.path)
+         val gitHash = git("rev-parse", "--short=7", "HEAD").getText().trim()
+-        val implementationVersion = System.getenv("BUILD_NUMBER") ?: "\"$gitHash\""
++        val mcVersion = properties["mcVersion"] // MultiPaper
++        val buildNumber = System.getenv("BUILD_NUMBER") // MultiPaper
++        val implementationVersion = if (buildNumber != null) "MultiPaper-$mcVersion-$buildNumber" else "git-MultiPaper-\"$gitHash\"" // MultiPaper
+         val date = git("show", "-s", "--format=%ci", gitHash).getText().trim() // Paper
+         val gitBranch = git("rev-parse", "--abbrev-ref", "HEAD").getText().trim() // Paper
+         attributes(
+             "Main-Class" to "org.bukkit.craftbukkit.Main",
+             "Implementation-Title" to "CraftBukkit",
+             "Implementation-Version" to "git-Purpur-$implementationVersion", // Pufferfish // Purpur
++            "Implementation-Version" to implementationVersion, // MultiPaper
+             "Implementation-Vendor" to date, // Paper
+             "Specification-Title" to "Bukkit",
+             "Specification-Version" to project.version,

@@ -1,0 +1,50 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Fri, 21 Jan 2022 20:59:46 +1000
+Subject: [PATCH] PRO Use multithreaded region file IO
+
+
+diff --git a/net/minecraft/server/level/ChunkMap.java b/net/minecraft/server/level/ChunkMap.java
+index 937ba63e5f47e300ede06ee8f438e9f48c437437..9a0595fe335d6a1f1cc22c1f569f3fdfc28ff406 100644
+--- a/net/minecraft/server/level/ChunkMap.java
++++ b/net/minecraft/server/level/ChunkMap.java
+@@ -1661,7 +1661,7 @@ public class ChunkMap extends ChunkStorage implements ChunkHolder.PlayerProvider
+     @Nullable
+     @Override
+     public CompoundTag read(ChunkPos chunkcoordintpair) throws IOException {
+-        if (Thread.currentThread() != com.destroystokyo.paper.io.PaperFileIOThread.Holder.INSTANCE) {
++        if (!com.destroystokyo.paper.io.PaperFileIOThread.Holder.INSTANCE.isCurrentThread()) { // MultiPaper
+             CompoundTag ret = com.destroystokyo.paper.io.PaperFileIOThread.Holder.INSTANCE
+                 .loadChunkDataAsyncFuture(this.level, chunkcoordintpair.x, chunkcoordintpair.z, com.destroystokyo.paper.io.IOUtil.getPriorityForCurrentThread(),
+                     false, true, true).join().chunkData;
+@@ -1677,7 +1677,7 @@ public class ChunkMap extends ChunkStorage implements ChunkHolder.PlayerProvider
+ 
+     @Override
+     public void write(ChunkPos chunkcoordintpair, CompoundTag nbttagcompound) throws IOException {
+-        if (Thread.currentThread() != com.destroystokyo.paper.io.PaperFileIOThread.Holder.INSTANCE) {
++        if (!com.destroystokyo.paper.io.PaperFileIOThread.Holder.INSTANCE.isCurrentThread()) { // MultiPaper
+             com.destroystokyo.paper.io.PaperFileIOThread.Holder.INSTANCE.scheduleSave(
+                 this.level, chunkcoordintpair.x, chunkcoordintpair.z, null, nbttagcompound,
+                 com.destroystokyo.paper.io.IOUtil.getPriorityForCurrentThread());
+diff --git a/net/minecraft/world/entity/ai/village/poi/PoiManager.java b/net/minecraft/world/entity/ai/village/poi/PoiManager.java
+index 524b78e4468a6cbdd445d245afaf907caf6c25f8..91a108c51e0020c28b83200d55ecdf3bdb585a4e 100644
+--- a/net/minecraft/world/entity/ai/village/poi/PoiManager.java
++++ b/net/minecraft/world/entity/ai/village/poi/PoiManager.java
+@@ -438,7 +438,7 @@ public class PoiManager extends SectionStorage<PoiSection> {
+     @javax.annotation.Nullable
+     @Override
+     public net.minecraft.nbt.CompoundTag read(ChunkPos chunkcoordintpair) throws java.io.IOException {
+-        if (this.world != null && Thread.currentThread() != com.destroystokyo.paper.io.PaperFileIOThread.Holder.INSTANCE) {
++        if (this.world != null && !com.destroystokyo.paper.io.PaperFileIOThread.Holder.INSTANCE.isCurrentThread()) { // MultiPaper
+             // MultiPaper start - don't block the main thread, run tasks in the meantime
+             CompletableFuture<PaperFileIOThread.ChunkData> completablefuture = com.destroystokyo.paper.io.PaperFileIOThread.Holder.INSTANCE
+                 .loadChunkDataAsyncFuture(this.world, chunkcoordintpair.x, chunkcoordintpair.z, com.destroystokyo.paper.io.IOUtil.getPriorityForCurrentThread(),
+@@ -460,7 +460,7 @@ public class PoiManager extends SectionStorage<PoiSection> {
+ 
+     @Override
+     public void write(ChunkPos chunkcoordintpair, net.minecraft.nbt.CompoundTag nbttagcompound) throws java.io.IOException {
+-        if (this.world != null && Thread.currentThread() != com.destroystokyo.paper.io.PaperFileIOThread.Holder.INSTANCE) {
++        if (this.world != null && !com.destroystokyo.paper.io.PaperFileIOThread.Holder.INSTANCE.isCurrentThread()) { // MultiPaper
+             com.destroystokyo.paper.io.PaperFileIOThread.Holder.INSTANCE.scheduleSave(
+                 this.world, chunkcoordintpair.x, chunkcoordintpair.z, nbttagcompound, null,
+                 com.destroystokyo.paper.io.IOUtil.getPriorityForCurrentThread());

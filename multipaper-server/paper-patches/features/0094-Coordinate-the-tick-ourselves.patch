@@ -1,0 +1,23 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Fri, 31 Dec 2021 19:47:45 +1000
+Subject: [PATCH] Coordinate the tick ourselves
+
+
+diff --git a/src/main/java/puregero/multipaper/MultiPaperConnection.java b/src/main/java/puregero/multipaper/MultiPaperConnection.java
+index 90dcb8eb17321923d831ec95a413a7290722fe7d..f474e9f40d2ecb6be850f36ab21a63dbeaff4025 100644
+--- a/src/main/java/puregero/multipaper/MultiPaperConnection.java
++++ b/src/main/java/puregero/multipaper/MultiPaperConnection.java
+@@ -389,6 +389,12 @@ public class MultiPaperConnection extends Thread {
+         }
+     }
+ 
++    public void tick(DataInputStream in, DataOutputSender out) throws IOException {
++        if (MinecraftServer.getServer() != null) {
++            MinecraftServer.getServer().shouldTick = true;
++        }
++    }
++
+     public void writeTickTime(long time, double tps) throws IOException {
+         DataOutputSender out = new DataOutputSender(this);
+         out.writeUTF("writeTickTime");

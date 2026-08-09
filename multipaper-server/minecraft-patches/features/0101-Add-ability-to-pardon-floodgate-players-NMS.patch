@@ -1,0 +1,62 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Fri, 18 Mar 2022 01:43:33 +1000
+Subject: [PATCH] Add ability to pardon floodgate players
+
+
+diff --git a/net/minecraft/commands/synchronization/ArgumentTypeInfos.java b/net/minecraft/commands/synchronization/ArgumentTypeInfos.java
+index ee9f7bb0e3db19dda3e6300a0a6670e558314cd7..7470567bfc5071219f13f3cdf188f0f483876b0e 100644
+--- a/net/minecraft/commands/synchronization/ArgumentTypeInfos.java
++++ b/net/minecraft/commands/synchronization/ArgumentTypeInfos.java
+@@ -61,6 +61,7 @@ import net.minecraft.commands.synchronization.brigadier.StringArgumentSerializer
+ import net.minecraft.core.Registry;
+ import net.minecraft.gametest.framework.TestClassNameArgument;
+ import net.minecraft.gametest.framework.TestFunctionArgument;
++import puregero.multipaper.BanListGameProfileArgument;
+ 
+ public class ArgumentTypeInfos {
+     private static final Map<Class<?>, ArgumentTypeInfo<?, ?>> BY_CLASS = Maps.newHashMap();
+@@ -79,6 +80,7 @@ public class ArgumentTypeInfos {
+         register(registry, "brigadier:string", StringArgumentType.class, new StringArgumentSerializer());
+         register(registry, "entity", EntityArgument.class, new EntityArgument.Info());
+         register(registry, "game_profile", GameProfileArgument.class, SingletonArgumentInfo.contextFree(GameProfileArgument::gameProfile));
++        BY_CLASS.put(BanListGameProfileArgument.class, BY_CLASS.get(GameProfileArgument.class)); // MultiPaper - Add our own GameProfileArgument implementation
+         register(registry, "block_pos", BlockPosArgument.class, SingletonArgumentInfo.contextFree(BlockPosArgument::blockPos));
+         register(registry, "column_pos", ColumnPosArgument.class, SingletonArgumentInfo.contextFree(ColumnPosArgument::columnPos));
+         register(registry, "vec3", Vec3Argument.class, SingletonArgumentInfo.contextFree(Vec3Argument::vec3));
+diff --git a/net/minecraft/server/commands/PardonCommand.java b/net/minecraft/server/commands/PardonCommand.java
+index e7e580db15a2d186a9eed9cd45b76501a73fc8f8..cc638901d08d934545fef0bbc2e6dec1c2f9e643 100644
+--- a/net/minecraft/server/commands/PardonCommand.java
++++ b/net/minecraft/server/commands/PardonCommand.java
+@@ -2,16 +2,22 @@ package net.minecraft.server.commands;
+ 
+ import com.mojang.authlib.GameProfile;
+ import com.mojang.brigadier.CommandDispatcher;
++import com.mojang.brigadier.StringReader;
+ import com.mojang.brigadier.exceptions.CommandSyntaxException;
+ import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
+ import java.util.Collection;
++import java.util.Collections;
++
+ import net.minecraft.commands.CommandSourceStack;
+ import net.minecraft.commands.Commands;
+ import net.minecraft.commands.SharedSuggestionProvider;
+ import net.minecraft.commands.arguments.GameProfileArgument;
+ import net.minecraft.network.chat.Component;
+ import net.minecraft.network.chat.ComponentUtils;
++import net.minecraft.server.MinecraftServer;
+ import net.minecraft.server.players.UserBanList;
++import net.minecraft.server.players.UserBanListEntry;
++import puregero.multipaper.BanListGameProfileArgument;
+ 
+ public class PardonCommand {
+     private static final SimpleCommandExceptionType ERROR_NOT_BANNED = new SimpleCommandExceptionType(Component.translatable("commands.pardon.failed"));
+@@ -19,7 +25,7 @@ public class PardonCommand {
+     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+         dispatcher.register(Commands.literal("pardon").requires((source) -> {
+             return source.hasPermission(3);
+-        }).then(Commands.argument("targets", GameProfileArgument.gameProfile()).suggests((context, builder) -> {
++        }).then(Commands.argument("targets", new BanListGameProfileArgument()).suggests((context, builder) -> { // MultiPaper - also get gameprofiles from the ban list
+             return SharedSuggestionProvider.suggest(context.getSource().getServer().getPlayerList().getBans().getUserList(), builder);
+         }).executes((context) -> {
+             return pardonPlayers(context.getSource(), GameProfileArgument.getGameProfiles(context, "targets"));

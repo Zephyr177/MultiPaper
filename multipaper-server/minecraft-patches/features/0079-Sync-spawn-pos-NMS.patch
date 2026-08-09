@@ -1,0 +1,26 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Mon, 31 Jan 2022 21:23:37 +1000
+Subject: [PATCH] Sync spawn pos
+
+
+diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
+index cac78447abf61a76e77d8874097898da5c935817..209f71a7a8c2835a76b79c6fd4a4322769c3ead2 100644
+--- a/net/minecraft/server/level/ServerLevel.java
++++ b/net/minecraft/server/level/ServerLevel.java
+@@ -185,6 +185,7 @@ import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet; // Paper
+ import puregero.multipaper.MultiPaper;
+ import puregero.multipaper.MultiPaperChunkHandler;
+ import puregero.multipaper.MultiPaperEntitiesHandler;
++import puregero.multipaper.externalserverprotocol.SpawnUpdatePacket;
+ import puregero.multipaper.externalserverprotocol.TimeUpdatePacket;
+ 
+ public class ServerLevel extends Level implements WorldGenLevel {
+@@ -2265,6 +2266,7 @@ public class ServerLevel extends Level implements WorldGenLevel {
+             this.removeTicketsForSpawn(this.paperConfig().spawn.keepSpawnLoadedRange * 16, prevSpawn);
+             this.addTicketsForSpawn(this.paperConfig().spawn.keepSpawnLoadedRange * 16, pos);
+         }
++        if (!SpawnUpdatePacket.updatingSpawn) MultiPaper.broadcastPacketToExternalServers(getWorld().getName(), new SpawnUpdatePacket(this));
+         this.getServer().getPlayerList().broadcastAll(new ClientboundSetDefaultSpawnPositionPacket(pos, angle));
+     }
+ 

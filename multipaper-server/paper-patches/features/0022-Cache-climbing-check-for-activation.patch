@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Paul Sauve <paul@technove.co>
+Date: Mon, 26 Apr 2021 10:52:56 -0500
+Subject: [PATCH] Cache climbing check for activation
+
+
+diff --git a/src/main/java/org/spigotmc/ActivationRange.java b/src/main/java/org/spigotmc/ActivationRange.java
+index aa60cf00538562c6e5da32be557bfa657ed1a175..09ec0bd0759001a5974287b4ef65c58f65ca3793 100644
+--- a/src/main/java/org/spigotmc/ActivationRange.java
++++ b/src/main/java/org/spigotmc/ActivationRange.java
+@@ -310,7 +310,7 @@ public class ActivationRange
+         if ( entity instanceof LivingEntity )
+         {
+             LivingEntity living = (LivingEntity) entity;
+-            if ( living.onClimbable() || living.jumping || living.hurtTime > 0 || living.activeEffects.size() > 0 ) // Paper
++            if ( living.onClimableCached() || living.jumping || living.hurtTime > 0 || living.activeEffects.size() > 0 ) // Paper // Airplane - use cached
+             {
+                 return 1; // Paper
+             }

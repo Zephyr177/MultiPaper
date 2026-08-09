@@ -1,0 +1,39 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Tue, 11 Jan 2022 23:50:54 +1000
+Subject: [PATCH] Pickup items on the player's server
+
+
+diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
+index e2ed436c427464249bda23db817c83e54c2e2492..3fb740ea7402fbc792800f1cf79135571543218a 100644
+--- a/net/minecraft/server/level/ServerPlayer.java
++++ b/net/minecraft/server/level/ServerPlayer.java
+@@ -205,6 +205,7 @@ public class ServerPlayer extends Player {
+     @Nullable
+     private Vec3 levitationStartPos;
+     private int levitationStartTime;
++    public boolean hasAddedAnItemThisTick = false; // MultiPaper
+     private boolean disconnected;
+     @Nullable
+     private Vec3 startingToFallPosition;
+diff --git a/net/minecraft/world/entity/item/ItemEntity.java b/net/minecraft/world/entity/item/ItemEntity.java
+index 39a938dfc3b7478800e5f736ef3a85b70e1c4382..807a62c0f23985cd53937f11d9ba46ca9e614ad1 100644
+--- a/net/minecraft/world/entity/item/ItemEntity.java
++++ b/net/minecraft/world/entity/item/ItemEntity.java
+@@ -37,6 +37,7 @@ import org.bukkit.event.entity.EntityPickupItemEvent;
+ import org.bukkit.event.player.PlayerPickupItemEvent;
+ // CraftBukkit end
+ import org.bukkit.event.player.PlayerAttemptPickupItemEvent; // Paper
++import puregero.multipaper.MultiPaperInventoryHandler;
+ 
+ public class ItemEntity extends Entity {
+ 
+@@ -459,7 +460,7 @@ public class ItemEntity extends Entity {
+             }
+             // CraftBukkit end
+ 
+-            if (this.pickupDelay == 0 && (this.owner == null || this.owner.equals(player.getUUID())) && player.getInventory().add(itemstack)) {
++            if (this.pickupDelay == 0 && (this.owner == null || this.owner.equals(player.getUUID())) && MultiPaperInventoryHandler.givePlayerItem(player, itemstack)) { // MultiPaper
+                 // Paper Start
+                 if (flyAtPlayer) {
+                     player.take(this, i);

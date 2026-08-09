@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Kevin Raneri <kevin.raneri@gmail.com>
+Date: Tue, 9 Nov 2021 13:53:53 -0500
+Subject: [PATCH] Pufferfish Config and Command
+
+
+diff --git a/net/minecraft/server/dedicated/DedicatedServer.java b/net/minecraft/server/dedicated/DedicatedServer.java
+index 51b3db0b6c2cede95b584268e035c0fb36d38094..60120cd101ed2ee1d04161bf5de9d997261beac0 100644
+--- a/net/minecraft/server/dedicated/DedicatedServer.java
++++ b/net/minecraft/server/dedicated/DedicatedServer.java
+@@ -221,6 +221,8 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
+         com.destroystokyo.paper.VersionHistoryManager.INSTANCE.getClass(); // load version history now
+         io.papermc.paper.brigadier.PaperBrigadierProviderImpl.INSTANCE.getClass(); // init PaperBrigadierProvider
+         // Paper end
++        gg.pufferfish.pufferfish.PufferfishConfig.load(); // Pufferfish
++        gg.pufferfish.pufferfish.PufferfishCommand.init(); // Pufferfish
+ 
+         this.setPvpAllowed(dedicatedserverproperties.pvp);
+         this.setFlightAllowed(dedicatedserverproperties.allowFlight);

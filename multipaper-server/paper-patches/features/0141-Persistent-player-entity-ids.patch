@@ -1,0 +1,18 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Fri, 1 Sep 2023 20:24:00 +0900
+Subject: [PATCH] Persistent player entity ids
+
+
+diff --git a/src/main/java/puregero/multipaper/ExternalPlayer.java b/src/main/java/puregero/multipaper/ExternalPlayer.java
+index 3cd1f7adfb5dd29328c21083e755ad92dd67b390..3dcc25bc6b6d98050e854fc6d22f7aef28edd20e 100644
+--- a/src/main/java/puregero/multipaper/ExternalPlayer.java
++++ b/src/main/java/puregero/multipaper/ExternalPlayer.java
+@@ -54,6 +54,7 @@ public class ExternalPlayer extends ServerPlayer {
+ 
+         if (MultiPaperConfiguration.get().syncSettings.syncEntityIds) {
+             setId(entityId);
++            if (MultiPaperConfiguration.get().syncSettings.persistentPlayerEntityIds) persistentEntityIds.put(gameProfile.getId(), getId());// MultiPaper - persistent entity ids for players across servers
+             // Update cache hast sets with our new entity id
+             this.cachedSingleHashSet = new com.destroystokyo.paper.util.misc.PooledLinkedHashSets.PooledObjectLinkedOpenHashSet<>(this);
+             this.cachedSingleMobDistanceMap = new com.destroystokyo.paper.util.PooledHashSets.PooledObjectLinkedOpenHashSet<>(this);

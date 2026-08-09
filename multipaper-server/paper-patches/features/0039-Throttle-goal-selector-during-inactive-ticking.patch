@@ -1,0 +1,24 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Kevin Raneri <kevin.raneri@gmail.com>
+Date: Sat, 11 Dec 2021 22:20:45 -0500
+Subject: [PATCH] Throttle goal selector during inactive ticking
+
+
+diff --git a/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java b/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
+index 545c16454bd672ffe0703c9098c45f47b52eb062..8875c312379c1080ab20b278fbcdcdcd95ade1b8 100644
+--- a/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
++++ b/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
+@@ -111,6 +111,13 @@ public class PufferfishConfig {
+ 			enableAsyncMobSpawning = temp;
+ 		}
+ 	}
++
++	public static boolean throttleInactiveGoalSelectorTick;
++	private static void inactiveGoalSelectorThrottle() {
++		getBoolean("inactive-goal-selector-throttle", "inactive-goal-selector-disable", true,
++				"Throttles the AI goal selector in entity inactive ticks.",
++				"This can improve performance by a few percent, but has minor gameplay implications.");
++	}
+ 	
+ 	private static void ensureDefault(String key, Object defaultValue, String... comment) {
+ 		if (!config.contains(key)) {

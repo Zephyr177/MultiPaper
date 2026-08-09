@@ -1,0 +1,50 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Mon, 21 Mar 2022 12:51:41 +1000
+Subject: [PATCH] Add getAllOnlinePlayers and getLocalOnlinePlayers
+
+
+diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
+index 59bb0918966eb578b8179db43d14bc26a758a768..82ea74171d827fd9a57a89ac721bdb575001bfba 100644
+--- a/net/minecraft/server/players/PlayerList.java
++++ b/net/minecraft/server/players/PlayerList.java
+@@ -121,6 +121,7 @@ public abstract class PlayerList {
+     private static final SimpleDateFormat BAN_DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd 'at' HH:mm:ss z");
+     private final MinecraftServer server;
+     public final List<ServerPlayer> players = new java.util.concurrent.CopyOnWriteArrayList(); // CraftBukkit - ArrayList -> CopyOnWriteArrayList: Iterator safety
++    public final List<ServerPlayer> localPlayers = new java.util.concurrent.CopyOnWriteArrayList(); // MultiPaper
+     private final Map<UUID, ServerPlayer> playersByUUID = Maps.newHashMap();
+     private final UserBanList bans;
+     private final IpBanList ipBans;
+@@ -312,6 +313,7 @@ public abstract class PlayerList {
+ 
+         // entityplayer.connection.send(ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(this.players)); // CraftBukkit - replaced with loop below
+         this.players.add(player);
++        if (!(player instanceof ExternalPlayer)) this.localPlayers.add(player); // MultiPaper
+         this.playersByName.put(player.getScoreboardName().toLowerCase(java.util.Locale.ROOT), player); // Spigot
+         this.playersByUUID.put(player.getUUID(), player);
+         // this.broadcastAll(ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(List.of(entityplayer))); // CraftBukkit - replaced with loop below
+@@ -653,6 +655,7 @@ public abstract class PlayerList {
+         entityplayer.retireScheduler(); // Paper - Folia schedulers
+         entityplayer.getAdvancements().stopListening();
+         this.players.remove(entityplayer);
++        if (!(entityplayer instanceof ExternalPlayer)) this.localPlayers.remove(entityplayer); // MultiPaper
+         this.playersByName.remove(entityplayer.getScoreboardName().toLowerCase(java.util.Locale.ROOT)); // Spigot
+         this.server.getCustomBossEvents().onPlayerDisconnect(entityplayer);
+         UUID uuid = entityplayer.getUUID();
+@@ -821,6 +824,7 @@ public abstract class PlayerList {
+         // MultiPaper end
+         entityplayer.stopRiding(); // CraftBukkit
+         this.players.remove(entityplayer);
++        if (!(entityplayer instanceof ExternalPlayer)) this.localPlayers.remove(entityplayer); // MultiPaper
+         this.playersByName.remove(entityplayer.getScoreboardName().toLowerCase(java.util.Locale.ROOT)); // Spigot
+         entityplayer.serverLevel().removePlayerImmediately(entityplayer, Entity.RemovalReason.DISCARDED);
+         BlockPos blockposition = entityplayer.getRespawnPosition();
+@@ -958,6 +962,7 @@ public abstract class PlayerList {
+         if (!entityplayer.connection.isDisconnected()) {
+             worldserver1.addRespawnedPlayer(entityplayer1);
+             this.players.add(entityplayer1);
++            if (!(entityplayer1 instanceof ExternalPlayer)) this.localPlayers.add(entityplayer1); // MultiPaper
+             this.playersByName.put(entityplayer1.getScoreboardName().toLowerCase(java.util.Locale.ROOT), entityplayer1); // Spigot
+             this.playersByUUID.put(entityplayer1.getUUID(), entityplayer1);
+         }

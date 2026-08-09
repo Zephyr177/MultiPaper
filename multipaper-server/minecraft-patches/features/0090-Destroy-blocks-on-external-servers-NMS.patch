@@ -1,0 +1,83 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Tue, 8 Mar 2022 00:20:58 +1000
+Subject: [PATCH] Destroy blocks on external servers
+
+
+diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
+index 36444968551b569bed20ef25606ce27d12731bde..7febd8ea9f87be619acd521d9bf13ffebca2af44 100644
+--- a/net/minecraft/server/level/ServerPlayer.java
++++ b/net/minecraft/server/level/ServerPlayer.java
+@@ -249,6 +249,7 @@ public class ServerPlayer extends Player {
+     private int containerCounter;
+     @Nullable public ExternalServer openContainer; // MultiPaper
+     public int latency;
++    public boolean destroyAndAckHandledByExternalServer = false; /// MultiPaper
+     public boolean wonGame;
+     public int containerUpdateDelay; // Paper // MultiPaper - make public
+     public long loginTime; // Paper
+diff --git a/net/minecraft/server/level/ServerPlayerGameMode.java b/net/minecraft/server/level/ServerPlayerGameMode.java
+index f3bac087856f420aa6c14707e90288f4962967bf..88cebbdcf45c6afee04ddc7a05a9912e84bd063a 100644
+--- a/net/minecraft/server/level/ServerPlayerGameMode.java
++++ b/net/minecraft/server/level/ServerPlayerGameMode.java
+@@ -3,6 +3,8 @@ package net.minecraft.server.level;
+ import com.mojang.logging.LogUtils;
+ import java.util.Objects;
+ import javax.annotation.Nullable;
++
++import io.papermc.paper.chunk.system.scheduling.NewChunkHolder;
+ import net.minecraft.advancements.CriteriaTriggers;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Direction;
+@@ -44,6 +46,9 @@ import org.bukkit.event.Event;
+ import org.bukkit.event.block.Action;
+ import org.bukkit.event.player.PlayerGameModeChangeEvent;
+ import org.bukkit.event.player.PlayerInteractEvent;
++import puregero.multipaper.MultiPaper;
++import puregero.multipaper.externalserverprotocol.DestroyAndAckPacket;
++import puregero.multipaper.externalserverprotocol.DestroyBlockPacket;
+ // CraftBukkit end
+ 
+ public class ServerPlayerGameMode {
+@@ -334,6 +339,15 @@ public class ServerPlayerGameMode {
+     }
+ 
+     public void destroyAndAck(BlockPos pos, int sequence, String reason) {
++        // MultiPaper start
++        NewChunkHolder newChunkHolder = MultiPaper.getChunkHolder(this.level, pos);
++        if (MultiPaper.isChunkExternal(newChunkHolder)) {
++            newChunkHolder.externalOwner.getConnection().send(new DestroyAndAckPacket(player, pos, sequence, reason));
++            this.player.destroyAndAckHandledByExternalServer = true;
++            return;
++        }
++        // MultiPaper end
++
+         if (this.destroyBlock(pos)) {
+             this.debugLogging(pos, true, sequence, reason);
+         } else {
+@@ -344,6 +358,13 @@ public class ServerPlayerGameMode {
+     }
+ 
+     public boolean destroyBlock(BlockPos pos) {
++        // MultiPaper start
++        NewChunkHolder newChunkHolder = MultiPaper.getChunkHolder(this.level, pos);
++        if (MultiPaper.isChunkExternal(newChunkHolder)) {
++            newChunkHolder.externalOwner.getConnection().send(new DestroyBlockPacket(player, pos));
++            return false;
++        }
++        // MultiPaper end
+         BlockState iblockdata = this.level.getBlockState(pos);
+         // CraftBukkit start - fire BlockBreakEvent
+         org.bukkit.block.Block bblock = CraftBlock.at(level, pos);
+diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+index bbf83f1bd3f156a8816c5c90c98a8006871f3105..ebcdcf8a8a119751afc60fccab9d0d0e3d0d1887 100644
+--- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
++++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+@@ -2046,6 +2046,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+                 this.player.gameMode.captureSentBlockEntities = true;
+                 // Paper end - send block entities after prediction
+                 this.player.gameMode.handleBlockBreakAction(blockposition, packetplayinblockdig_enumplayerdigtype, packet.getDirection(), this.player.level().getMaxBuildHeight(), packet.getSequence());
++                if (this.player.destroyAndAckHandledByExternalServer) this.player.destroyAndAckHandledByExternalServer = false; else // MultiPaper
+                 this.player.connection.ackBlockChangesUpTo(packet.getSequence());
+                 // Paper start - send block entities after prediction
+                 this.player.gameMode.captureSentBlockEntities = false;

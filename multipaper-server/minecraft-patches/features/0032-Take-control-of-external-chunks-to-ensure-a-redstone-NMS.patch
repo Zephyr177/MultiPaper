@@ -1,0 +1,96 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Fri, 3 Dec 2021 22:28:35 +1000
+Subject: [PATCH] Take control of external chunks to ensure a redstone
+ contraption runs on a single server
+
+
+diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
+index 15559b32924456a5b4c59be8eb2f2130c1aa78fd..3c76021a391f02bd952e27f3e6da53dab3988af3 100644
+--- a/net/minecraft/server/MinecraftServer.java
++++ b/net/minecraft/server/MinecraftServer.java
+@@ -195,6 +195,7 @@ import org.bukkit.event.server.ServerLoadEvent;
+ 
+ import co.aikar.timings.MinecraftTimings; // Paper
+ import puregero.multipaper.MultiPaper;
++import puregero.multipaper.MultiPaperExternalBlocksHandler;
+ 
+ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTask> implements CommandSource, AutoCloseable {
+ 
+@@ -1578,6 +1579,9 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+ 
+         this.isIteratingOverLevels = true; // Paper
+         net.minecraft.network.FriendlyByteBuf.hasItemSerializeEvent = org.purpurmc.purpur.event.packet.NetworkItemSerializeEvent.getHandlerList().getRegisteredListeners().length > 0; // Purpur
++
++        MultiPaperExternalBlocksHandler.tick(); // MultiPaper
++
+         Iterator iterator = this.getAllLevels().iterator(); // Paper - move down
+         while (iterator.hasNext()) {
+             ServerLevel worldserver = (ServerLevel) iterator.next();
+diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
+index bb9d30b7b6e9fcff6ba54a257238f64efebdeeb1..bba3191737e4af6862808aec2637a2348b29a291 100644
+--- a/net/minecraft/world/level/Level.java
++++ b/net/minecraft/world/level/Level.java
+@@ -835,6 +835,7 @@ public abstract class Level implements LevelAccessor, AutoCloseable {
+             return false;
+         } else {
+             FluidState fluid = this.getFluidState(pos);
++
+             // Paper start - while the above setAir method is named same and looks very similar
+             // they are NOT used with same intent and the above should not fire this event. The above method is more of a BlockSetToAirEvent,
+             // it doesn't imply destruction of a block that plays a sound effect / drops an item.
+diff --git a/net/minecraft/world/level/LevelAccessor.java b/net/minecraft/world/level/LevelAccessor.java
+index 73d1adc5ddf0363966eac0c77c8dfbbb20a2b6a3..55ca70ac01a8586c66f49c71e21399bba96f5636 100644
+--- a/net/minecraft/world/level/LevelAccessor.java
++++ b/net/minecraft/world/level/LevelAccessor.java
+@@ -23,6 +23,7 @@ import net.minecraft.world.phys.Vec3;
+ import net.minecraft.world.ticks.LevelTickAccess;
+ import net.minecraft.world.ticks.ScheduledTick;
+ import net.minecraft.world.ticks.TickPriority;
++import puregero.multipaper.MultiPaperExternalBlocksHandler;
+ 
+ public interface LevelAccessor extends CommonLevelAccessor, LevelTimeAccess {
+ 
+@@ -44,20 +45,24 @@ public interface LevelAccessor extends CommonLevelAccessor, LevelTimeAccess {
+     }
+ 
+     default void scheduleTick(BlockPos pos, Block block, int delay, TickPriority priority) {
++        MultiPaperExternalBlocksHandler.onBlockScheduled(getMinecraftWorld(), pos);
+         this.getBlockTicks().schedule(this.createTick(pos, block, delay, priority));
+     }
+ 
+     default void scheduleTick(BlockPos pos, Block block, int delay) {
++        MultiPaperExternalBlocksHandler.onBlockScheduled(getMinecraftWorld(), pos);
+         this.getBlockTicks().schedule(this.createTick(pos, block, delay));
+     }
+ 
+     LevelTickAccess<Fluid> getFluidTicks();
+ 
+     default void scheduleTick(BlockPos pos, Fluid fluid, int delay, TickPriority priority) {
++        MultiPaperExternalBlocksHandler.onBlockScheduled(getMinecraftWorld(), pos);
+         this.getFluidTicks().schedule(this.createTick(pos, fluid, delay, priority));
+     }
+ 
+     default void scheduleTick(BlockPos pos, Fluid fluid, int delay) {
++        MultiPaperExternalBlocksHandler.onBlockScheduled(getMinecraftWorld(), pos);
+         this.getFluidTicks().schedule(this.createTick(pos, fluid, delay));
+     }
+ 
+diff --git a/net/minecraft/world/level/chunk/LevelChunk.java b/net/minecraft/world/level/chunk/LevelChunk.java
+index 6600fa1cb87c43fdd8a167dc2444a2b3bf799e2a..b12b0432516770fa53f4b0076effd03d0b8fc41e 100644
+--- a/net/minecraft/world/level/chunk/LevelChunk.java
++++ b/net/minecraft/world/level/chunk/LevelChunk.java
+@@ -567,7 +567,13 @@ public class LevelChunk extends ChunkAccess {
+                 boolean flag3 = iblockdata1.hasBlockEntity();
+ 
+                 if (!this.level.isClientSide) {
++                    if (MultiPaperChunkHandler.blockUpdateChunk == null) // MultiPaper - only call onremove when we're not updating a chunk
+                     iblockdata1.onRemove(this.level, blockposition, iblockdata, flag);
++                    // MultiPaper start - call removeBlockEntity even if we don't remove the block
++                    else if (!iblockdata1.is(block) && flag3) {
++                        this.removeBlockEntity(blockposition);
++                    }
++                    // MultiPaper end - call removeBlockEntity even if we don't remove the block
+                 } else if (!iblockdata1.is(block) && flag3) {
+                     this.removeBlockEntity(blockposition);
+                 }

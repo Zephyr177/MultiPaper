@@ -1,0 +1,33 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Paul Sauve <paul@technove.co>
+Date: Sun, 20 Dec 2020 14:08:24 -0600
+Subject: [PATCH] Airplane Profiler
+
+Airplane
+Copyright (C) 2020 Technove LLC
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+diff --git a/build.gradle.kts b/build.gradle.kts
+index a0bce61e2ba7e4189a5c2b076336c92f406744b6..4139591477669dfc9beb9051f29302767ca2983f 100644
+--- a/build.gradle.kts
++++ b/build.gradle.kts
+@@ -53,6 +53,7 @@ dependencies {
+     // Pufferfish end
+ 
+     implementation("com.github.technove:AIR:fe3dbb4420") // Airplane - config
++    implementation("com.github.technove:Flare:2c4a2114a0") // Airplane - flare
+ 
+     testImplementation("io.github.classgraph:classgraph:4.8.47") // Paper - mob goal test
+     testImplementation("junit:junit:4.13.2")

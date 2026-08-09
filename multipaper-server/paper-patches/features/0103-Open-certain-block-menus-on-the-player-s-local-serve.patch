@@ -1,0 +1,79 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Sat, 19 Mar 2022 01:38:18 +1000
+Subject: [PATCH] Open certain block menus on the player's local server
+
+
+diff --git a/src/main/java/puregero/multipaper/externalserverprotocol/ExternalServerPacketSerializer.java b/src/main/java/puregero/multipaper/externalserverprotocol/ExternalServerPacketSerializer.java
+index 2d5d3cb1f9c93d1f066838b48dd2b1285b0a294c..30d28f986dc92cbc50eba92c894f94b303924c6b 100644
+--- a/src/main/java/puregero/multipaper/externalserverprotocol/ExternalServerPacketSerializer.java
++++ b/src/main/java/puregero/multipaper/externalserverprotocol/ExternalServerPacketSerializer.java
+@@ -72,6 +72,7 @@ public class ExternalServerPacketSerializer {
+         addPacket(DestroyAndAckPacket.class, DestroyAndAckPacket::new);
+         addPacket(EntityTeleportPacket.class, EntityTeleportPacket::new);
+         addPacket(ProjectileHitEntityPacket.class, ProjectileHitEntityPacket::new);
++        addPacket(PlayerUseBlockPacket.class, PlayerUseBlockPacket::new);
+     }
+ 
+     private static void addPacket(Class<? extends ExternalServerPacket> clazz, Function<FriendlyByteBuf, ExternalServerPacket> deserializer) {
+diff --git a/src/main/java/puregero/multipaper/externalserverprotocol/PlayerUseBlockPacket.java b/src/main/java/puregero/multipaper/externalserverprotocol/PlayerUseBlockPacket.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..fbbc9f9bde95a2e57deab403ac0a22208793f91b
+--- /dev/null
++++ b/src/main/java/puregero/multipaper/externalserverprotocol/PlayerUseBlockPacket.java
+@@ -0,0 +1,55 @@
++package puregero.multipaper.externalserverprotocol;
++
++import net.minecraft.core.BlockPos;
++import net.minecraft.core.Direction;
++import net.minecraft.network.FriendlyByteBuf;
++import net.minecraft.server.MinecraftServer;
++import net.minecraft.server.level.ServerPlayer;
++import net.minecraft.world.InteractionHand;
++import net.minecraft.world.entity.player.Player;
++import net.minecraft.world.phys.BlockHitResult;
++import net.minecraft.world.phys.Vec3;
++import org.apache.logging.log4j.LogManager;
++import org.apache.logging.log4j.Logger;
++import puregero.multipaper.ExternalServerConnection;
++import puregero.multipaper.MultiPaper;
++
++import java.util.UUID;
++
++public class PlayerUseBlockPacket extends ExternalServerPacket {
++
++    private static final Logger LOGGER = LogManager.getLogger(PlayerUseBlockPacket.class.getSimpleName());
++
++    private final UUID uuid;
++    private final BlockPos pos;
++
++    public PlayerUseBlockPacket(Player player, BlockPos blockPos) {
++        this.uuid = player.getUUID();
++        this.pos = blockPos;
++    }
++
++    public PlayerUseBlockPacket(FriendlyByteBuf in) {
++        uuid = in.readUUID();
++        pos = BlockPos.of(in.readLong());
++    }
++
++    @Override
++    public void write(FriendlyByteBuf out) {
++        out.writeUUID(uuid);
++        out.writeLong(pos.asLong());
++    }
++
++    @Override
++    public void handle(ExternalServerConnection connection) {
++        MultiPaper.runSync(() -> {
++            ServerPlayer player = MinecraftServer.getServer().getPlayerList().getPlayer(uuid);
++
++            if (player == null) {
++                LOGGER.warn("Tried to use a block " + pos + " with a non-existent player of uuid " + uuid);
++                return;
++            }
++
++            player.level().getBlockState(pos).use(player.level(), player, InteractionHand.MAIN_HAND, new BlockHitResult(new Vec3(pos.getX(), pos.getY(), pos.getZ()), Direction.NORTH, pos, false));
++        });
++    }
++}

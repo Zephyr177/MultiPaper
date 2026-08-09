@@ -1,0 +1,49 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Fri, 11 Feb 2022 00:13:18 +1000
+Subject: [PATCH] Sync scoreboards
+
+
+diff --git a/net/minecraft/server/ServerScoreboard.java b/net/minecraft/server/ServerScoreboard.java
+index 3a4a0727ad44322e3ba85512cd077808dab080b7..85c7894ab8d9a4168aeec38322dc290dadd61e8a 100644
+--- a/net/minecraft/server/ServerScoreboard.java
++++ b/net/minecraft/server/ServerScoreboard.java
+@@ -19,6 +19,11 @@ import net.minecraft.world.scores.PlayerTeam;
+ import net.minecraft.world.scores.Score;
+ import net.minecraft.world.scores.Scoreboard;
+ import net.minecraft.world.scores.ScoreboardSaveData;
++import org.bukkit.Bukkit;
++import org.bukkit.craftbukkit.scoreboard.CraftScoreboard;
++import puregero.multipaper.MultiPaper;
++import puregero.multipaper.config.MultiPaperConfiguration;
++import puregero.multipaper.externalserverprotocol.ScoreboardUpdatePacket;
+ 
+ public class ServerScoreboard extends Scoreboard {
+ 
+@@ -291,11 +296,25 @@ public class ServerScoreboard extends Scoreboard {
+ 
+     // CraftBukkit start - Send to players
+     private void broadcastAll(Packet packet) {
++        if (Bukkit.getScoreboardManager() == null) return; // MultiPaper - Server hasn't started yet
++        boolean mainScoreboard = this == ((CraftScoreboard) Bukkit.getScoreboardManager().getMainScoreboard()).getHandle(); // MultiPaper
++
+         for (ServerPlayer entityplayer : (List<ServerPlayer>) this.server.getPlayerList().players) {
+-            if (entityplayer.getBukkitEntity().getScoreboard().getHandle() == this) {
++            if (entityplayer.getBukkitEntity().getScoreboard().getHandle() == this && !(mainScoreboard && MultiPaper.isExternalPlayer(entityplayer))) { // MultiPaper - Don't external scoreboards that we sync to other players
+                 entityplayer.connection.send(packet);
+             }
+         }
++
++        // MultiPaper start - Only sync the main scoreboard for now
++        if (mainScoreboard && MultiPaperConfiguration.get().syncSettings.syncScoreboards && !ScoreboardUpdatePacket.updating) {
++            if (packet instanceof ClientboundSetObjectivePacket setObjectivePacket) {
++                Objective objective = getObjective(setObjectivePacket.getObjectiveName());
++                MultiPaper.broadcastPacketToExternalServers(new ScoreboardUpdatePacket(null, objective != null ? objective.getCriteria() : null, packet));
++            } else {
++                MultiPaper.broadcastPacketToExternalServers(new ScoreboardUpdatePacket(null, packet));
++            }
++        }
++        // MultiPaper end
+     }
+     // CraftBukkit end
+ 

@@ -1,0 +1,18 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Fri, 8 Apr 2022 15:41:28 +1000
+Subject: [PATCH] Add zstd compression
+
+
+diff --git a/build.gradle.kts b/build.gradle.kts
+index 3127bcdd8f6b5e9feb9018db166d401b891eed8d..4910d99bbb68a3dbab2dbaa07fb0b61d4f92172c 100644
+--- a/build.gradle.kts
++++ b/build.gradle.kts
+@@ -56,6 +56,7 @@ dependencies {
+     runtimeOnly("org.apache.maven:maven-resolver-provider:3.8.5")
+     runtimeOnly("org.apache.maven.resolver:maven-resolver-connector-basic:1.7.3")
+     runtimeOnly("org.apache.maven.resolver:maven-resolver-transport-http:1.7.3")
++    implementation("com.github.luben:zstd-jni:1.5.2-2") // MultiPaper
+ 
+     implementation("org.mozilla:rhino-runtime:1.7.14") // Purpur
+     implementation("org.mozilla:rhino-engine:1.7.14") // Purpur

@@ -1,0 +1,48 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Sat, 5 Mar 2022 00:29:09 +1000
+Subject: [PATCH] Add generic file syncing between servers
+
+
+diff --git a/net/minecraft/server/Main.java b/net/minecraft/server/Main.java
+index 55d716fb281b8e3c4dc9e3ea5f5b683c515eb596..993e0a33e017de8ec85c39fe7a8859cd19ba16db 100644
+--- a/net/minecraft/server/Main.java
++++ b/net/minecraft/server/Main.java
+@@ -76,6 +76,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
+ import puregero.multipaper.config.MultiPaperConfiguration;
+ import puregero.multipaper.config.MultiPaperConfigurationLoader;
+ import puregero.multipaper.MultiPaper;
++import puregero.multipaper.MultiPaperFileSyncer;
+ 
+ public class Main {
+ 
+@@ -141,6 +142,8 @@ public class Main {
+             MultiPaperConfigurationLoader.init((File) optionset.valueOf("multipaper-settings")); // MultiPaper
+             System.setProperty("multipaper.master-connection.my-name", MultiPaperConfiguration.get().masterConnection.myName); // MultiPaper - remember this property even after config reloads
+             MultiPaper.getConnection(); // MultiPaper - start connection
++            MultiPaperFileSyncer.init(); // MultiPaper
++            MultiPaperConfigurationLoader.init((File) optionset.valueOf("multipaper-settings")); // MultiPaper - reload the config incase it was changed during the sync
+ 
+             io.papermc.paper.plugin.PluginInitializerManager.load(optionset); // Paper
+             Bootstrap.bootStrap();
+diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
+index e43e22a9e445c17674a7dd1705ebcfc59b78b9e6..9b623c451555ef97b900d4e91e90ccaa146709d0 100644
+--- a/net/minecraft/server/MinecraftServer.java
++++ b/net/minecraft/server/MinecraftServer.java
+@@ -196,6 +196,7 @@ import org.bukkit.event.server.ServerLoadEvent;
+ import co.aikar.timings.MinecraftTimings; // Paper
+ import puregero.multipaper.MultiPaper;
+ import puregero.multipaper.MultiPaperExternalBlocksHandler;
++import puregero.multipaper.MultiPaperFileSyncer;
+ import puregero.multipaper.externalserverprotocol.DifficultyUpdatePacket;
+ 
+ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTask> implements CommandSource, AutoCloseable {
+@@ -1020,6 +1021,8 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+         io.papermc.paper.chunk.system.io.RegionFileIOThread.close(true); // Paper // Paper - rewrite chunk system
+         LOGGER.info("Flushing MultiPaper Master connection"); // MultiPaper
+         MultiPaper.flushMasterConnectionAsync().join(); // MultiPaper
++        LOGGER.info("Closing MultiPaper File Syncer"); // MultiPaper
++        MultiPaperFileSyncer.onStop().join(); // MultiPaper
+         LOGGER.info("Closing Thread Pool");
+         Util.shutdownExecutors(); // Paper
+         LOGGER.info("Closing Server");

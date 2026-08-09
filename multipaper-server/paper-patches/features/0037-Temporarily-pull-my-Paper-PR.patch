@@ -1,0 +1,32 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Paul <paul@technove.co>
+Date: Sun, 26 Sep 2021 15:10:00 -0500
+Subject: [PATCH] Temporarily pull my Paper PR
+
+
+diff --git a/src/main/java/com/destroystokyo/paper/PaperWorldConfig.java b/src/main/java/com/destroystokyo/paper/PaperWorldConfig.java
+index c2d8294ffeff017a6ec9e7725b50eaef8eb75dfd..6b7006829dde81840bd305ee775d26c9f1ef24f7 100644
+--- a/src/main/java/com/destroystokyo/paper/PaperWorldConfig.java
++++ b/src/main/java/com/destroystokyo/paper/PaperWorldConfig.java
+@@ -268,6 +268,9 @@ public class PaperWorldConfig {
+ 
+     public int softDespawnDistance;
+     public int hardDespawnDistance;
++    // Airplane start - separate squared values
++    public int softDespawnDistanceSq;
++    public int hardDespawnDistanceSq;
+     private void despawnDistances() {
+         softDespawnDistance = getInt("despawn-ranges.soft", 32); // 32^2 = 1024, Minecraft Default
+         hardDespawnDistance = getInt("despawn-ranges.hard", 128); // 128^2 = 16384, Minecraft Default
+@@ -278,8 +281,9 @@ public class PaperWorldConfig {
+ 
+         log("Living Entity Despawn Ranges:  Soft: " + softDespawnDistance + " Hard: " + hardDespawnDistance);
+ 
+-        softDespawnDistance = softDespawnDistance*softDespawnDistance;
+-        hardDespawnDistance = hardDespawnDistance*hardDespawnDistance;
++        softDespawnDistanceSq = softDespawnDistance*softDespawnDistance;
++        hardDespawnDistanceSq = hardDespawnDistance*hardDespawnDistance;
++        // Airplane end
+     }
+ 
+     public boolean keepSpawnInMemory;

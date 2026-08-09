@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Sat, 4 Dec 2021 22:39:00 +1000
+Subject: [PATCH] Sync mob navigation when handing over to another server
+
+
+diff --git a/net/minecraft/world/entity/ai/navigation/PathNavigation.java b/net/minecraft/world/entity/ai/navigation/PathNavigation.java
+index fdb08ecc19bc4a1bc93cf6b18adcea2bc5573965..fa27235dd6a47993d3ccdf5bffaf73ecc511f48e 100644
+--- a/net/minecraft/world/entity/ai/navigation/PathNavigation.java
++++ b/net/minecraft/world/entity/ai/navigation/PathNavigation.java
+@@ -34,7 +34,7 @@ public abstract class PathNavigation {
+     protected final Level level;
+     @Nullable
+     protected Path path;
+-    protected double speedModifier;
++    public double speedModifier; // MultiPaper - make public
+     protected int tick;
+     protected int lastStuckCheck;
+     protected Vec3 lastStuckCheckPos = Vec3.ZERO;

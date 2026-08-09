@@ -1,0 +1,24 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Kevin Raneri <kevin.raneri@gmail.com>
+Date: Tue, 9 Nov 2021 13:53:53 -0500
+Subject: [PATCH] Pufferfish Config and Command
+
+
+diff --git a/build.gradle.kts b/build.gradle.kts
+index cd7503e4fa4d2cc3c567e18be61638bb0fbb079d..862ad694b2a6b1ed2c7113a9ba0efe1ad62faf1c 100644
+--- a/build.gradle.kts
++++ b/build.gradle.kts
+@@ -45,6 +45,13 @@ dependencies {
+     runtimeOnly("org.apache.maven.resolver:maven-resolver-connector-basic:1.7.3")
+     runtimeOnly("org.apache.maven.resolver:maven-resolver-transport-http:1.7.3")
+ 
++    // Pufferfish start
++    implementation("org.yaml:snakeyaml:1.33")
++    implementation ("me.carleslc.Simple-YAML:Simple-Yaml:1.8.2") {
++        exclude(group="org.yaml", module="snakeyaml")
++    }
++    // Pufferfish end
++
+     testImplementation("io.github.classgraph:classgraph:4.8.47") // Paper - mob goal test
+     testImplementation("junit:junit:4.13.2")
+     testImplementation("org.hamcrest:hamcrest-library:1.3")

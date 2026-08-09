@@ -1,0 +1,58 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Xymb <xymb@endcrystal.me>
+Date: Fri, 17 Feb 2023 03:17:40 +0100
+Subject: [PATCH] Fix cross-server Ender Dragon sword hit.
+
+Made UUID and ID of dragon parts deterministic.
+
+diff --git a/src/main/java/puregero/multipaper/MultiPaperEntityIdManager.java b/src/main/java/puregero/multipaper/MultiPaperEntityIdManager.java
+index a7d863e6ccbcff3ccc3ef73e7335ffdd97a09907..3e0d78291cdf5da05ec7c855257433fcd2bcc8aa 100644
+--- a/src/main/java/puregero/multipaper/MultiPaperEntityIdManager.java
++++ b/src/main/java/puregero/multipaper/MultiPaperEntityIdManager.java
+@@ -66,6 +66,33 @@ public class MultiPaperEntityIdManager {
+         });
+     }
+ 
++    // Generate sequential entity ids
++    public static int[] next(int count) {
++        if (MultiPaperConfiguration.get().syncSettings.syncEntityIds) {
++            int[] ids = new int[count];
++            int progress = 0;
++            while (progress < count) {
++                ids[progress] = next();
++                if (progress > 0) {
++                    if (ids[progress] != ids[progress - 1] + 1) {
++                        ids[0] = ids[progress];
++                        progress = 1;
++                        continue;
++                    }
++                }
++                progress++;
++            }
++
++            return ids;
++        } else {
++            int[] ids = new int[count];
++            for (int i = 0; i < count; i++) {
++                ids[i] = LOCAL_ENTITY_COUNTER.getAndIncrement();
++            }
++            return ids;
++        }
++    }
++
+     public static int next() {
+         if (MultiPaperConfiguration.get().syncSettings.syncEntityIds) {
+             Block block = entityIdBlock;
+diff --git a/src/main/java/puregero/multipaper/externalserverprotocol/PlayerActionOnEntityPacket.java b/src/main/java/puregero/multipaper/externalserverprotocol/PlayerActionOnEntityPacket.java
+index e974cb3cbfca212e3c972d98e4fc6ad48cfc2ded..396caea9b37c1e3612635361ab93d8884191c28a 100644
+--- a/src/main/java/puregero/multipaper/externalserverprotocol/PlayerActionOnEntityPacket.java
++++ b/src/main/java/puregero/multipaper/externalserverprotocol/PlayerActionOnEntityPacket.java
+@@ -67,7 +67,7 @@ public class PlayerActionOnEntityPacket extends ExternalServerPacket {
+                 return;
+             }
+ 
+-            Entity entity = ((ServerLevel) player.level).getEntity(entityUuid);
++            Entity entity = ((ServerLevel) player.level()).getEntityOrPart(entityUuid); // MultiPaper
+ 
+             if (entity == null) {
+                 LOGGER.warn(player.getScoreboardName() + " tried to run an action on a non-existent entity with uuid " + entityUuid);

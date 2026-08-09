@@ -1,0 +1,36 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Sun, 19 Dec 2021 14:51:13 +1000
+Subject: [PATCH] Sync weather
+
+
+diff --git a/net/minecraft/world/level/storage/PrimaryLevelData.java b/net/minecraft/world/level/storage/PrimaryLevelData.java
+index 31c31a9138cb5f6e41de01a6210f84e72fd7dc58..89507ac6521b1e173571201a5331315b7df77937 100644
+--- a/net/minecraft/world/level/storage/PrimaryLevelData.java
++++ b/net/minecraft/world/level/storage/PrimaryLevelData.java
+@@ -54,6 +54,7 @@ import net.minecraft.world.level.levelgen.WorldGenSettings;
+ import org.bukkit.Bukkit;
+ import org.bukkit.event.weather.ThunderChangeEvent;
+ import org.bukkit.event.weather.WeatherChangeEvent;
++import puregero.multipaper.MultiPaperRainHandler;
+ // CraftBukkit end
+ 
+ public class PrimaryLevelData implements ServerLevelData, WorldData {
+@@ -414,6 +415,8 @@ public class PrimaryLevelData implements ServerLevelData, WorldData {
+         }
+         // CraftBukkit end
+         this.thundering = thundering;
++
++        MultiPaperRainHandler.onWeatherChange(this, this.getLevelName());
+     }
+ 
+     @Override
+@@ -454,6 +457,8 @@ public class PrimaryLevelData implements ServerLevelData, WorldData {
+         }
+         // CraftBukkit end
+         this.raining = raining;
++
++        MultiPaperRainHandler.onWeatherChange(this, this.getLevelName());
+     }
+ 
+     @Override
