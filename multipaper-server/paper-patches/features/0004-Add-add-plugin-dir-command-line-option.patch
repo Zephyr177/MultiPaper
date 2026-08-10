@@ -1,0 +1,31 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Fri, 11 Feb 2022 00:13:18 +1000
+Subject: [PATCH] Add --add-plugin-dir command line option
+
+
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+index 07ed007f268cb72be11ddf075af645ebdc3a58b2..9b2cad5437c664c25f68343f9faaaeb5de1918ba 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+@@ -589,6 +589,20 @@ public final class CraftServer implements Server {
+             }
+             list.add(file);
+         }
++        // MultiPaper start
++        @SuppressWarnings("unchecked")
++        List<File> dirs = (List<File>) this.console.options.valuesOf("add-plugin-dir");
++        for (File dir : dirs) {
++            File[] files = dir.listFiles();
++            if (files != null) {
++                for (File file : files) {
++                    if (file.getName().endsWith(".jar")) {
++                        list.add(file);
++                    }
++                }
++            }
++        }
++        // MultiPaper end
+         return list;
+     }
+ 

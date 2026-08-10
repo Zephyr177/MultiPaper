@@ -1,0 +1,30 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Fri, 4 Mar 2022 20:33:33 +1000
+Subject: [PATCH] MultiPaper config file
+
+
+diff --git a/net/minecraft/server/Main.java b/net/minecraft/server/Main.java
+index 78dc12164734ddd6781459e3824ee78e924777f3..8918498fa0dabf4718a315b5084a68e33355bb42 100644
+--- a/net/minecraft/server/Main.java
++++ b/net/minecraft/server/Main.java
+@@ -62,6 +62,9 @@ import net.minecraft.world.level.storage.WorldData;
+ import org.jspecify.annotations.Nullable;
+ import org.slf4j.Logger;
+ 
++import puregero.multipaper.config.MultiPaperConfiguration;
++import puregero.multipaper.config.MultiPaperConfigurationLoader;
++
+ public class Main {
+     private static final Logger LOGGER = LogUtils.getLogger();
+ 
+@@ -117,6 +120,9 @@ public class Main {
+             org.purpurmc.purpur.PurpurConfig.registerMinecraftDisabledCommands = purpurConfiguration.getBoolean("settings.register-minecraft-disabled-commands"); // Purpur - register disabled minecraft commands
+             // Purpur end - Add toggle for enchant level clamping - load config files early
+ 
++            MultiPaperConfigurationLoader.init((File) options.valueOf("multipaper-settings")); // MultiPaper
++            System.setProperty("multipaper.master-connection.my-name", MultiPaperConfiguration.get().masterConnection.myName); // MultiPaper - remember this property even after config reloads
++
+             io.papermc.paper.plugin.PluginInitializerManager.load(options); // Paper
+             Bootstrap.bootStrap();
+             Bootstrap.validate();

@@ -1,0 +1,23 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Thu, 2 Jun 2022 16:35:35 +1000
+Subject: [PATCH] Allow config files to be overriden through the command line
+
+
+diff --git a/net/minecraft/server/dedicated/Settings.java b/net/minecraft/server/dedicated/Settings.java
+index 178f750c114afe26c98ff3434e6837f0b5f40f65..4c11186434803b48c1313807a6d124ed80360400 100644
+--- a/net/minecraft/server/dedicated/Settings.java
++++ b/net/minecraft/server/dedicated/Settings.java
+@@ -36,6 +36,12 @@ public abstract class Settings<T extends Settings<T>> {
+     }
+ 
+     private String getOverride(final String name, final String value) {
++        // MultiPaper start - Allow properties to be set from the command line
++        if (System.getProperty("properties." + name) != null) {
++            return System.getProperty("properties." + name);
++        }
++        // MultiPaper end
++
+         if (this.options != null && this.options.has(name)) {
+             return String.valueOf(this.options.valueOf(name));
+         }
