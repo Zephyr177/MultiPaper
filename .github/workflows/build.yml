@@ -17,7 +17,7 @@ jobs:
       - name: Install nested-build dependency wiring
         run: mkdir -p ~/.gradle/init.d && cp .github/gradle/multipaper-nested-deps.gradle ~/.gradle/init.d/
       - name: Apply Patches
-        run: ./gradlew applyPatches --stacktrace
+        run: ./gradlew applyAllPatches --stacktrace
       - name: Build Paperclip jar
         run: ./gradlew shadowjar createReobfPaperclipJar --stacktrace
       - name: Upload Paperclip jar
