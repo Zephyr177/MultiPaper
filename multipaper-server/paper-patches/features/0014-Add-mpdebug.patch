@@ -1,0 +1,145 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Thu, 25 Nov 2021 21:43:06 +1000
+Subject: [PATCH] Add /mpdebug
+
+
+diff --git a/src/main/java/org/bukkit/craftbukkit/command/CraftCommandMap.java b/src/main/java/org/bukkit/craftbukkit/command/CraftCommandMap.java
+index fa03c956d06f3b093545e2861a23c67b3cfff8f5..4e86da4e5f8af5ab6e07f846545f7b4e51e629aa 100644
+--- a/src/main/java/org/bukkit/craftbukkit/command/CraftCommandMap.java
++++ b/src/main/java/org/bukkit/craftbukkit/command/CraftCommandMap.java
+@@ -4,6 +4,7 @@ import java.util.Map;
+ import org.bukkit.Server;
+ import org.bukkit.command.Command;
+ import org.bukkit.command.SimpleCommandMap;
++import puregero.multipaper.commands.MPDebugCommand;
+ import puregero.multipaper.commands.ServersCommand;
+ 
+ public class CraftCommandMap extends SimpleCommandMap {
+@@ -22,6 +23,7 @@ public class CraftCommandMap extends SimpleCommandMap {
+     }
+ 
+     private void setDefaultCommands() {
++        register("multipaper", new MPDebugCommand("mpdebug"));
+         register("multipaper", new ServersCommand("servers"));
+     }
+     // MultiPaper end
+diff --git a/src/main/java/org/bukkit/craftbukkit/scheduler/CraftScheduler.java b/src/main/java/org/bukkit/craftbukkit/scheduler/CraftScheduler.java
+index 0000000000000000000000000000000000000000..0000000000000000000000000000000000000000 100644
+--- a/src/main/java/org/bukkit/craftbukkit/scheduler/CraftScheduler.java
++++ b/src/main/java/org/bukkit/craftbukkit/scheduler/CraftScheduler.java
+@@ -516,14 +516,20 @@ public class CraftScheduler implements BukkitScheduler {
+     protected CraftTask handle(final CraftTask task, final long delay) { // Paper
+         // Paper start
+         if (!this.isAsyncScheduler && !task.isSync()) {
+             this.asyncScheduler.handle(task, delay);
+             return task;
+         }
+         // Paper end
+         task.setNextRun(this.currentTick + delay);
+         this.addTask(task);
+         return task;
+     }
++
++    // MultiPaper start
++    public CraftTask scheduleInternalTask(final Runnable runnable, final long delay, final String name) {
++        return this.handle(new CraftTask(null, runnable, this.nextId(), CraftTask.NO_REPEATING), delay);
++    }
++    // MultiPaper end
+ 
+     private static void validate(final Plugin plugin, final Object task) {
+         Preconditions.checkArgument(plugin != null, "Plugin cannot be null");
+
+diff --git a/src/main/java/puregero/multipaper/commands/MPDebugCommand.java b/src/main/java/puregero/multipaper/commands/MPDebugCommand.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..98bf0440c530ede1a046f9c29731afc8e8747522
+--- /dev/null
++++ b/src/main/java/puregero/multipaper/commands/MPDebugCommand.java
+@@ -0,0 +1,73 @@
++package puregero.multipaper.commands;
++
++import org.bukkit.Bukkit;
++import org.bukkit.ChatColor;
++import org.bukkit.command.Command;
++import org.bukkit.command.CommandSender;
++import org.bukkit.craftbukkit.scheduler.CraftScheduler;
++import org.bukkit.entity.Player;
++import org.bukkit.scheduler.BukkitTask;
++import org.jetbrains.annotations.NotNull;
++
++import java.util.HashSet;
++import java.util.Iterator;
++
++public class MPDebugCommand extends Command implements Runnable {
++    private final HashSet<Player> debugEnabled = new HashSet<>();
++    private BukkitTask task = null;
++
++    public MPDebugCommand(String command) {
++        super(command);
++        setPermission("multipaper.command.mpdebug");
++    }
++
++    @Override
++    public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel, String[] args) {
++        if (!testPermission(sender)) return false;
++
++        if (!(sender instanceof Player player)) {
++            sender.sendMessage(ChatColor.RED + "Only players can execute this command.");
++            return false;
++        }
++
++        if (debugEnabled.remove(player)) {
++            player.sendMessage("MultiPaper debug disabled");
++            return false;
++        }
++
++        debugEnabled.add(player);
++
++        sender.sendMessage("MultiPaper debug enabled");
++
++        if (task == null) {
++            run();
++        }
++
++        return true;
++    }
++
++    @Override
++    public void run() {
++        task = null;
++
++        Iterator<Player> iterator = debugEnabled.iterator();
++        while (iterator.hasNext()) {
++            Player player = iterator.next();
++
++            if (!player.isOnline()) {
++                iterator.remove();
++                continue;
++            }
++
++            run(player);
++        }
++
++        if (!debugEnabled.isEmpty()) {
++            task = ((CraftScheduler) Bukkit.getScheduler()).scheduleInternalTask(this, 5, "MultiPaper debug");
++        }
++    }
++
++    private void run(Player player) {
++        // MultiPaper - chunk owner display deferred until chunk syncing port
++    }
++}
+
+diff --git a/src/main/java/puregero/multipaper/permissions/MultiPaperCommandPermissions.java b/src/main/java/puregero/multipaper/permissions/MultiPaperCommandPermissions.java
+index b7eb85651189c54cf380c150678761ebb56778c2..546da05992c945e90545bcd0d3f2cb5c2c4dbb03 100644
+--- a/src/main/java/puregero/multipaper/permissions/MultiPaperCommandPermissions.java
++++ b/src/main/java/puregero/multipaper/permissions/MultiPaperCommandPermissions.java
+@@ -14,7 +14,8 @@ public class MultiPaperCommandPermissions {
+         Permission commands = DefaultPermissions.registerPermission(ROOT, "Gives the user the ability to use all MultiPaper commands", parent);
+ 
+         DefaultPermissions.registerPermission(PREFIX + "servers", "List details about servers running on this MultiPaper network", PermissionDefault.TRUE, commands);
++        DefaultPermissions.registerPermission(PREFIX + "mpdebug", "MPDebug command", PermissionDefault.TRUE, commands);
+ 
+ 
+         commands.recalculatePermissibles();
+     }

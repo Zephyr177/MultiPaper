@@ -1,0 +1,78 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Wed, 5 Jan 2022 16:43:52 +1000
+Subject: [PATCH] Send server port to the master server
+
+Send this server's port to the master server, and keep a list of the
+local (non-external) players so the master server can tell how many
+players are actually connected to this server.
+
+diff --git a/net/minecraft/server/dedicated/DedicatedServer.java b/net/minecraft/server/dedicated/DedicatedServer.java
+index 9b19888..230e2dc 100644
+--- a/net/minecraft/server/dedicated/DedicatedServer.java
++++ b/net/minecraft/server/dedicated/DedicatedServer.java
+@@ -296,6 +296,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
+             this.setPort(properties.serverPort);
+         }
+         bindAddress = new java.net.InetSocketAddress(localAddress, this.getPort());
++        MultiPaper.setPort(this.getPort()); // MultiPaper
+         }
+         // Paper end - Unix domain socket support
+ 
+diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
+index 331c781..6dc146f 100644
+--- a/net/minecraft/server/players/PlayerList.java
++++ b/net/minecraft/server/players/PlayerList.java
+@@ -114,6 +114,7 @@ public abstract class PlayerList {
+     private static final SimpleDateFormat BAN_DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd 'at' HH:mm:ss z", Locale.ROOT);
+     private final MinecraftServer server;
+     private final List<ServerPlayer> players = new java.util.concurrent.CopyOnWriteArrayList(); // CraftBukkit - ArrayList -> CopyOnWriteArrayList: Iterator safety
++    public final List<ServerPlayer> localPlayers = new java.util.concurrent.CopyOnWriteArrayList(); // MultiPaper
+     private final Map<UUID, ServerPlayer> playersByUUID = Maps.newHashMap();
+     private final UserBanList bans;
+     private final IpBanList ipBans;
+@@ -232,19 +233,20 @@ public abstract class PlayerList {
+ 
+         // player.connection.send(ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(this.players)); // CraftBukkit - replaced with loop below
+         // MultiPaper start
+         if (!MultiPaper.sendPlayerConnect(player).join()) {
+             Component chatmessage = Component.literal("You are already logged into another server.");
+             connection.send(new ClientboundDisconnectPacket(chatmessage));
+             connection.disconnect(chatmessage);
+             return;
+         }
+         player.hasRegisteredOnMaster = true;
+         if (!connection.isConnected()) {
+             MultiPaper.sendPlayerDisconnect(player); // MultiPaper
+             return;
+         }
+         // MultiPaper end
+         this.players.add(player);
++        if (!(player instanceof ExternalPlayer)) this.localPlayers.add(player); // MultiPaper
+         this.playersByName.put(player.getScoreboardName().toLowerCase(java.util.Locale.ROOT), player); // Spigot
+         this.playersByUUID.put(player.getUUID(), player);
+         // this.broadcastAll(ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(List.of(player))); // CraftBukkit - replaced with loop below
+@@ -500,6 +502,7 @@ public abstract class PlayerList {
+         player.retireScheduler(); // Paper - Folia schedulers
+         player.getAdvancements().clearTriggers();
+         this.players.remove(player);
++        if (!(player instanceof ExternalPlayer)) this.localPlayers.remove(player); // MultiPaper
+         this.playersByName.remove(player.getScoreboardName().toLowerCase(java.util.Locale.ROOT)); // Spigot
+         this.server.getCustomBossEvents().onPlayerDisconnect(player);
+         UUID uuid = player.getUUID();
+@@ -604,6 +607,7 @@ public abstract class PlayerList {
+         Level fromLevel = serverPlayer.level();
+         // Paper end - respawn event
+         this.players.remove(serverPlayer);
++        if (!(serverPlayer instanceof ExternalPlayer)) this.localPlayers.remove(serverPlayer); // MultiPaper
+         this.playersByName.remove(serverPlayer.getScoreboardName().toLowerCase(java.util.Locale.ROOT)); // Paper
+         serverPlayer.level().removePlayerImmediately(serverPlayer, removalReason);
+         ServerLevel level = respawnInfo.newLevel();
+@@ -648,6 +652,7 @@ public abstract class PlayerList {
+         this.sendPlayerPermissionLevel(player);
+         level.addRespawnedPlayer(player);
+         this.players.add(player);
++        if (!(player instanceof ExternalPlayer)) this.localPlayers.add(player); // MultiPaper
+         this.playersByName.put(player.getScoreboardName().toLowerCase(java.util.Locale.ROOT), player); // Paper
+         this.playersByUUID.put(player.getUUID(), player);
+         player.initInventoryMenu();

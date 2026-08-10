@@ -1,0 +1,99 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Mon, 21 Mar 2022 12:51:41 +1000
+Subject: [PATCH] Add getAllOnlinePlayers and getLocalOnlinePlayers
+
+
+// MultiPaper - port of old 0105. The Bukkit API additions (Server.java / Bukkit.java
+// declaring getAllOnlinePlayers()/getLocalOnlinePlayers()) await an api-patches
+// infrastructure that does not exist in the 26.2 repo layout yet, so these are
+// declared here as CraftServer-local methods (no @Override).
+
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+index 3279042c4729caeb849a9b98c6b81b0d17bfcf05..20ac4cb1610974e14d4806084400eaa8a0d9a061 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+@@ -302,4 +302,6 @@ public final class CraftServer implements Server {
+     private boolean overrideAllCommandBlockCommands = false;
+     public boolean ignoreVanillaPermissions = false;
+     private final List<CraftPlayer> playerView;
++    private final List<CraftPlayer> localPlayerView; // MultiPaper
++    private Thread inTabCompletion; // MultiPaper
+     public int reloadCount;
+@@ -405,6 +405,9 @@ public final class CraftServer implements Server {
+         this.console = console;
+         this.playerList = (DedicatedPlayerList) playerList;
+         this.playerView = MCUtil.transformUnmodifiable(playerList.getPlayers(), ServerPlayer::getBukkitEntity);
++        // MultiPaper start
++        this.localPlayerView = MCUtil.transformUnmodifiable(playerList.localPlayers, ServerPlayer::getBukkitEntity);
++        // MultiPaper end
+         this.serverVersion = io.papermc.paper.ServerBuildInfo.buildInfo().asString(io.papermc.paper.ServerBuildInfo.StringRepresentation.VERSION_SIMPLE); // Paper - improve version
+         this.structureManager = new CraftStructureManager(console.getStructureManager(), console.registryAccess());
+         this.serverTickManager = new CraftServerTickManager(console.tickRateManager());
+@@ -693,7 +693,23 @@ public final class CraftServer implements Server {
+     @Override
+     public List<CraftPlayer> getOnlinePlayers() {
+-        return this.playerView;
++        if (inTabCompletion != null && inTabCompletion == Thread.currentThread()) {
++            // If we're tab-completing, we probably want all the players
++            // instead of just the ones on our server.
++            return this.getAllOnlinePlayers();
++        } else {
++            return this.getLocalOnlinePlayers();
++        }
++    }
++
++    // MultiPaper start
++    public List<CraftPlayer> getLocalOnlinePlayers() {
++        return this.localPlayerView;
++    }
++
++    public List<CraftPlayer> getAllOnlinePlayers() {
++        return this.playerView;
+     }
++    // MultiPaper end
+ 
+     @Override
+     @Deprecated
+@@ -709,7 +720,7 @@ public final class CraftServer implements Server {
+ 
+         String lowerName = name.toLowerCase(Locale.ROOT);
+         int delta = Integer.MAX_VALUE;
+-        for (Player player : this.getOnlinePlayers()) {
++        for (Player player : this.getAllOnlinePlayers()) { // MultiPaper
+             if (player.getName().toLowerCase(Locale.ROOT).startsWith(lowerName)) {
+                 int curDelta = Math.abs(player.getName().length() - lowerName.length());
+                 if (curDelta < delta) {
+@@ -746,7 +757,7 @@ public final class CraftServer implements Server {
+ 
+         List<Player> matchedPlayers = new ArrayList<>();
+ 
+-        for (Player iterPlayer : this.getOnlinePlayers()) {
++        for (Player iterPlayer : this.getAllOnlinePlayers()) { // MultiPaper
+             String iterPlayerName = iterPlayer.getName();
+ 
+             if (partialName.equalsIgnoreCase(iterPlayerName)) {
+@@ -2287,6 +2298,6 @@ public final class CraftServer implements Server {
+         }
+ 
+-        players.addAll(this.getOnlinePlayers());
++        players.addAll(this.getAllOnlinePlayers()); // MultiPaper
+ 
+         return players.toArray(new OfflinePlayer[players.size()]);
+     }
+@@ -2838,6 +2850,6 @@ public final class CraftServer implements Server {
+         @Override
+         public void broadcast(BaseComponent component) {
+-            for (Player player : CraftServer.this.getOnlinePlayers()) {
++            for (Player player : CraftServer.this.getAllOnlinePlayers()) { // MultiPaper
+                 player.spigot().sendMessage(component);
+             }
+         }
+@@ -2845,6 +2857,6 @@ public final class CraftServer implements Server {
+         @Override
+         public void broadcast(BaseComponent... components) {
+-            for (Player player : CraftServer.this.getOnlinePlayers()) {
++            for (Player player : CraftServer.this.getAllOnlinePlayers()) { // MultiPaper
+                 player.spigot().sendMessage(components);
+             }
+         }

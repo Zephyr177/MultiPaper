@@ -1,0 +1,56 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Mon, 10 Aug 2026 00:00:00 +1000
+Subject: [PATCH] Fix compilation for 26.2
+
+Fix compile errors from the 26.2 update. PlayerList needs the
+ExternalPlayer import, Player needs a reset that does not broadcast
+(resetAttackStrengthTickerSynced), and FriendlyByteBuf#readNbt must cast
+its Tag result back to CompoundTag.
+
+diff --git a/net/minecraft/network/FriendlyByteBuf.java b/net/minecraft/network/FriendlyByteBuf.java
+index 11d2dc6..edc4aef 100644
+--- a/net/minecraft/network/FriendlyByteBuf.java
++++ b/net/minecraft/network/FriendlyByteBuf.java
+@@ -548,7 +548,12 @@ public class FriendlyByteBuf extends ByteBuf {
+     }
+ 
+     public @Nullable CompoundTag readNbt() {
+-        return readNbt(this, NbtAccounter.create(maxNbtSize)); // MultiPaper
++        Tag result = readNbt(this, NbtAccounter.create(maxNbtSize)); // MultiPaper
++        if (result != null && !(result instanceof CompoundTag)) {
++            throw new DecoderException("Not a compound tag: " + result);
++        } else {
++            return (CompoundTag) result;
++        }
+     }
+ 
+     public static @Nullable CompoundTag readNbt(final ByteBuf input) {
+diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
+index ad6778a..1f393d9 100644
+--- a/net/minecraft/server/players/PlayerList.java
++++ b/net/minecraft/server/players/PlayerList.java
+@@ -104,6 +104,7 @@ import net.minecraft.world.scores.Team;
+ import org.jspecify.annotations.Nullable;
+ import org.slf4j.Logger;
+ import puregero.multipaper.config.MultiPaperConfiguration;
++import puregero.multipaper.ExternalPlayer;
+ import puregero.multipaper.ExternalServerConnection;
+ import puregero.multipaper.MultiPaper;
+ import puregero.multipaper.externalserverprotocol.PlayerChangeDimensionPacket;
+diff --git a/net/minecraft/world/entity/player/Player.java b/net/minecraft/world/entity/player/Player.java
+index 4b4e62c..f70fa35 100644
+--- a/net/minecraft/world/entity/player/Player.java
++++ b/net/minecraft/world/entity/player/Player.java
+@@ -2049,6 +2049,11 @@ public abstract class Player extends Avatar implements ContainerUser {
+         this.itemSwapTicker = 0;
+     }
+ 
++    public void resetAttackStrengthTickerSynced() {
++        this.attackStrengthTicker = 0;
++        this.itemSwapTicker = 0;
++    }
++
+     @Override
+     // Paper start
+     public void onAttack(@Nullable Entity entity) {

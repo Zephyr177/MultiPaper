@@ -1,0 +1,27 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Mon, 15 Nov 2021 13:02:02 +1000
+Subject: [PATCH] Add sendTickTime
+
+
+diff --git a/src/main/java/puregero/multipaper/MultiPaper.java b/src/main/java/puregero/multipaper/MultiPaper.java
+index d9fa811b2a0b5f8402ae0e811b09ddbd8509e8ad..19948c5a87dd5f0da3aef064dbb6448d306395b6 100644
+--- a/src/main/java/puregero/multipaper/MultiPaper.java
++++ b/src/main/java/puregero/multipaper/MultiPaper.java
+@@ -1,5 +1,7 @@
+ package puregero.multipaper;
+ 
++import puregero.multipaper.mastermessagingprotocol.messages.masterbound.WriteTickTimeMessage;
++
+ public class MultiPaper {
+     private static MultiPaperConnection multiPaperConnection = null;
+ 
+@@ -10,4 +12,8 @@ public class MultiPaper {
+ 
+         return multiPaperConnection;
+     }
++
++    public static void sendTickTime(long time, double tps) {
++        getConnection().send(new WriteTickTimeMessage(time, (float) tps));
++    }
+ }

@@ -1,0 +1,65 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Mon, 15 Nov 2021 13:27:45 +1000
+Subject: [PATCH] Add peer-to-peer connection
+
+
+diff --git a/net/minecraft/server/dedicated/DedicatedServer.java b/net/minecraft/server/dedicated/DedicatedServer.java
+index 2a70abb9e0af502885593df1e732887cd9d2ce4d..ab27b4dc9c790426b7977b20174b7a86eeec4bf0 100644
+--- a/net/minecraft/server/dedicated/DedicatedServer.java
++++ b/net/minecraft/server/dedicated/DedicatedServer.java
+@@ -73,3 +73,4 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
+ import org.slf4j.Logger;
++import puregero.multipaper.MultiPaper;
+ 
+ public class DedicatedServer extends MinecraftServer implements ServerInterface {
+@@ -336,5 +336,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
+         }
+         // Purpur end - UPnP Port Forwarding
+ 
++        MultiPaper.onStart(bindAddress); // MultiPaper
++
+         // CraftBukkit start
+         this.server.loadPlugins();
+diff --git a/net/minecraft/server/network/ServerConnectionListener.java b/net/minecraft/server/network/ServerConnectionListener.java
+index 44d99e89226adb6234b9405f25ac9dab9bd84297..02c4b5728844d7158385616e1792a2cdcf2275b1 100644
+--- a/net/minecraft/server/network/ServerConnectionListener.java
++++ b/net/minecraft/server/network/ServerConnectionListener.java
+@@ -56,3 +56,3 @@ public class ServerConnectionListener {
+     // Paper start - prevent blocking on adding a new connection while the server is ticking
+-    private final java.util.Queue<Connection> pending = new java.util.concurrent.ConcurrentLinkedQueue<>();
++    public final java.util.Queue<Connection> pending = new java.util.concurrent.ConcurrentLinkedQueue<>(); // MultiPaper - make public
+     private static final boolean disableFlushConsolidation = Boolean.getBoolean("Paper.disableFlushConsolidate"); // Paper - Optimize network
+@@ -151,5 +151,5 @@ public class ServerConnectionListener {
+                         .localAddress(address) // Paper - Unix domain socket support
+-                        .option(ChannelOption.AUTO_READ, false) // CraftBukkit
++                        .option(ChannelOption.AUTO_READ, true) // CraftBukkit // MultiPaper - set auto read to true
+                         .bind()
+                         .syncUninterruptibly()
+                 );
+diff --git a/net/minecraft/server/network/ServerHandshakePacketListenerImpl.java b/net/minecraft/server/network/ServerHandshakePacketListenerImpl.java
+index 63cf71940f6480c593a43bd39900c50676367404..b41b49f904c09b39a198b86488ae3b8197102e0b 100644
+--- a/net/minecraft/server/network/ServerHandshakePacketListenerImpl.java
++++ b/net/minecraft/server/network/ServerHandshakePacketListenerImpl.java
+@@ -13,3 +13,5 @@ import net.minecraft.server.MinecraftServer;
+ import net.minecraft.server.MinecraftServer;
++import puregero.multipaper.ExternalServerConnection;
++import puregero.multipaper.MultiPaper;
+ 
+ public class ServerHandshakePacketListenerImpl implements ServerHandshakePacketListener {
+@@ -36,4 +36,15 @@ public class ServerHandshakePacketListenerImpl implements ServerHandshakePacketL
+     @Override
+     public void handleIntention(final ClientIntentionPacket packet) {
++        // MultiPaper start - Check if this is a MultiPaper peer connection
++        for (String part : packet.hostName().split("\00")) {
++            if (part.equals(MultiPaper.getConnection().secret)) {
++                server.getConnection().pending.remove(connection);
++                server.getConnection().getConnections().remove(connection);
++                new ExternalServerConnection(connection.channel);
++                return;
++            }
++        }
++        // MultiPaper end
++
+         this.connection.hostname = packet.hostName() + ":" + packet.port(); // CraftBukkit  - set hostname
+         switch (packet.intention()) {

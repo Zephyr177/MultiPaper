@@ -8,7 +8,7 @@ diff --git a/src/main/java/puregero/multipaper/ExternalServerConnection.java b/s
 index 7fc7f967ff3cad2615ee2f45c5d29ea992296f07..f70a5cb955ef9682a60cd7816ed93e381ca6a59e 100644
 --- a/src/main/java/puregero/multipaper/ExternalServerConnection.java
 +++ b/src/main/java/puregero/multipaper/ExternalServerConnection.java
-@@ -1,10 +1,12 @@
+@@ -1,27 +1,30 @@
  package puregero.multipaper;
  
  import io.netty.channel.Channel;
@@ -19,19 +19,27 @@ index 7fc7f967ff3cad2615ee2f45c5d29ea992296f07..f70a5cb955ef9682a60cd7816ed93e38
  import io.netty.handler.codec.compression.Zstd;
 +import io.netty.handler.codec.haproxy.*;
  import io.netty.util.internal.SystemPropertyUtil;
- import net.minecraft.network.*;
+ import net.minecraft.network.PacketEncoder;
  import net.minecraft.network.protocol.Packet;
-@@ -26,6 +28,7 @@ import java.io.IOException;
+ import net.minecraft.server.MinecraftServer;
+ import net.minecraft.server.level.ServerPlayer;
+ import net.minecraft.network.protocol.handshake.ClientIntent;
+ import net.minecraft.network.protocol.handshake.ClientIntentionPacket;
+ import net.minecraft.network.protocol.handshake.HandshakeProtocols;
+ import org.apache.logging.log4j.LogManager;
+ import org.apache.logging.log4j.Logger;
+ import puregero.multipaper.config.MultiPaperConfiguration;
+ import puregero.multipaper.externalserverprotocol.*;
+ import puregero.multipaper.mastermessagingprotocol.MessageBootstrap;
+ import puregero.multipaper.mastermessagingprotocol.MessageLengthDecoder;
+ import puregero.multipaper.mastermessagingprotocol.MessageLengthEncoder;
+ 
+ import java.io.Closeable;
+ import java.io.IOException;
  import java.util.*;
- import java.util.concurrent.CompletableFuture;
- import java.util.concurrent.ConcurrentHashMap;
 +import java.util.concurrent.TimeUnit;
- import java.util.function.Consumer;
- 
- public class ExternalServerConnection extends ChannelInitializer<SocketChannel> implements Closeable {
-@@ -69,6 +72,23 @@ public class ExternalServerConnection extends ChannelInitializer<SocketChannel>
-     }
- 
+ import java.util.concurrent.CompletableFuture;
+@@ -65,15 +65,34 @@ public class ExternalServerConnection extends ChannelInitializer<SocketChannel>
      public void sendMinecraftHandshake(String address, String secret, int port) {
 +        // MultiPaper start - Add support for Proxy Protocol
 +        if (io.papermc.paper.configuration.GlobalConfiguration.get() == null) {
@@ -52,8 +60,12 @@ index 7fc7f967ff3cad2615ee2f45c5d29ea992296f07..f70a5cb955ef9682a60cd7816ed93e38
 +
          channel.pipeline()
                  .addLast("prepender", new MessageLengthEncoder())
-                 .addLast("encoder", new PacketEncoder(PacketFlow.SERVERBOUND));
-@@ -81,6 +101,8 @@ public class ExternalServerConnection extends ChannelInitializer<SocketChannel>
+                 .addLast("encoder", new PacketEncoder(HandshakeProtocols.SERVERBOUND));
+         channel.writeAndFlush(new ClientIntentionPacket(0, address + "\00" + secret, port, ClientIntent.STATUS))
+                 .addListener(future -> {
+                     if (future.isSuccess()) {
+                         setupPipeline();
+                     } else if (future.cause() != null) {
                          future.cause().printStackTrace();
                      }
                  });

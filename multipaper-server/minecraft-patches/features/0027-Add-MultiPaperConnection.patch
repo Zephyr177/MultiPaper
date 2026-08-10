@@ -1,0 +1,31 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Mon, 15 Nov 2021 13:01:36 +1000
+Subject: [PATCH] Add MultiPaperConnection
+
+
+diff --git a/net/minecraft/server/Main.java b/net/minecraft/server/Main.java
+index 1d8f746e69ff149962e10aada28f56575e7a2b1d..55d716fb281b8e3c4dc9e3ea5f5b683c515eb596 100644
+--- a/net/minecraft/server/Main.java
++++ b/net/minecraft/server/Main.java
+@@ -65,4 +65,5 @@ import puregero.multipaper.config.MultiPaperConfiguration;
+ import puregero.multipaper.config.MultiPaperConfiguration;
+ import puregero.multipaper.config.MultiPaperConfigurationLoader;
++import puregero.multipaper.MultiPaper;
+ 
+ public class Main {
+@@ -123,4 +124,5 @@ public class Main {
+             MultiPaperConfigurationLoader.init((File) options.valueOf("multipaper-settings")); // MultiPaper
+             System.setProperty("multipaper.master-connection.my-name", MultiPaperConfiguration.get().masterConnection.myName); // MultiPaper - remember this property even after config reloads
++            MultiPaper.getConnection(); // MultiPaper - start connection
+ 
+             io.papermc.paper.plugin.PluginInitializerManager.load(options); // Paper
+diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
+index e6ddf69ade7ae51640569150f7db10d1afa63691..d9102845c6631d75e7549f269ca6b55bf9e8c051 100644
+--- a/net/minecraft/server/MinecraftServer.java
++++ b/net/minecraft/server/MinecraftServer.java
+@@ -190,3 +190,4 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+ import org.slf4j.Logger;
++import puregero.multipaper.MultiPaper;
+ 
+ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTask> implements CommandSource, ServerInfo, ChunkIOErrorReporter, ca.spottedleaf.moonrise.patches.chunk_system.server.ChunkSystemMinecraftServer { // Paper - rewrite chunk system

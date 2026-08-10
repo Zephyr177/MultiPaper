@@ -1,0 +1,21 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Sat, 25 Dec 2021 16:39:52 +1000
+Subject: [PATCH] Reobf error with ServerPlaceRecipe
+
+Add a comment on the loop line so the reobf mapping of the ServerPlaceRecipe
+inventory iteration does not fail.
+
+diff --git a/net/minecraft/recipebook/ServerPlaceRecipe.java b/net/minecraft/recipebook/ServerPlaceRecipe.java
+index d5ce83d..d97c12c 100644
+--- a/net/minecraft/recipebook/ServerPlaceRecipe.java
++++ b/net/minecraft/recipebook/ServerPlaceRecipe.java
+@@ -233,7 +233,7 @@ public class ServerPlaceRecipe<R extends Recipe<?>> {
+     private int getAmountOfFreeSlotsInInventory() {
+         int freeSlots = 0;
+ 
+-        for (ItemStack item : this.inventory.getNonEquipmentItems()) {
++        for (ItemStack item : this.inventory.getNonEquipmentItems()) { // MultiPaper - patch on this line to fix reobf error
+             if (item.isEmpty()) {
+                 freeSlots++;
+             }

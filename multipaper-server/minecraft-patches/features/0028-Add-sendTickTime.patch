@@ -1,0 +1,17 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Mon, 15 Nov 2021 13:02:02 +1000
+Subject: [PATCH] Add sendTickTime
+
+
+diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
+index d9102845c6631d75e7549f269ca6b55bf9e8c051..8c536848a4b5910096a6ef78a7c3bfc9336abc2f 100644
+--- a/net/minecraft/server/MinecraftServer.java
++++ b/net/minecraft/server/MinecraftServer.java
+@@ -1738,4 +1738,5 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+         this.tickTimesNanos[tickIndex] = tickTime;
+         this.smoothedTickTimeMillis = this.smoothedTickTimeMillis * 0.8F + (float)tickTime / (float)TimeUtil.NANOSECONDS_PER_MILLISECOND * 0.19999999F;
+         this.logTickMethodTime(nano);
++        MultiPaper.sendTickTime(tickTime, this.getTPS()[0]); // MultiPaper
+         profiler.pop();
+     }

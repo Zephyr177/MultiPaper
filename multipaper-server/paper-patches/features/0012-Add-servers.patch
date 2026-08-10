@@ -1,0 +1,132 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Thu, 25 Nov 2021 00:20:51 +1000
+Subject: [PATCH] Add /servers
+
+Adds a /servers command that lists all the servers in the MultiPaper network with
+their average tick time, tps and player count.
+
+---
+diff --git a/src/main/java/org/bukkit/craftbukkit/command/CraftCommandMap.java b/src/main/java/org/bukkit/craftbukkit/command/CraftCommandMap.java
+index 90ed57a7f..1ceed6b0a 100644
+--- a/src/main/java/org/bukkit/craftbukkit/command/CraftCommandMap.java
++++ b/src/main/java/org/bukkit/craftbukkit/command/CraftCommandMap.java
+@@ -4,13 +4,28 @@ import java.util.Map;
+ import org.bukkit.Server;
+ import org.bukkit.command.Command;
+ import org.bukkit.command.SimpleCommandMap;
++import puregero.multipaper.commands.ServersCommand;
+ 
+ public class CraftCommandMap extends SimpleCommandMap {
+ 
+     public CraftCommandMap(Server server) {
+         super(server, io.papermc.paper.command.brigadier.bukkit.BukkitBrigForwardingMap.INSTANCE);
++        setDefaultCommands(); // MultiPaper
+     }
+ 
++    // MultiPaper start
++    @Override
++    public void clearCommands() {
++        super.clearCommands();
++
++        setDefaultCommands();
++    }
++
++    private void setDefaultCommands() {
++        register("multipaper", new ServersCommand("servers"));
++    }
++    // MultiPaper end
++
+     public Map<String, Command> getKnownCommands() {
+         return this.knownCommands;
+     }
+diff --git a/src/main/java/puregero/multipaper/commands/ServersCommand.java b/src/main/java/puregero/multipaper/commands/ServersCommand.java
+new file mode 100644
+index 000000000..68a0dd766
+--- /dev/null
++++ b/src/main/java/puregero/multipaper/commands/ServersCommand.java
+@@ -0,0 +1,63 @@
++package puregero.multipaper.commands;
++
++import net.kyori.adventure.text.minimessage.MiniMessage;
++import net.minecraft.server.MinecraftServer;
++import net.minecraft.server.level.ServerPlayer;
++import org.bukkit.ChatColor;
++import org.bukkit.command.Command;
++import org.bukkit.command.CommandSender;
++import puregero.multipaper.ExternalPlayer;
++import puregero.multipaper.ExternalServer;
++import puregero.multipaper.MultiPaper;
++
++public class ServersCommand extends Command {
++    public ServersCommand(String command) {
++        super(command);
++        setPermission("multipaper.command.servers");
++    }
++
++    @Override
++    public boolean execute(CommandSender sender, String commandLabel, String[] args) {
++        if (!testPermission(sender)) return false;
++
++        StringBuilder stringBuilder = new StringBuilder();
++        stringBuilder.append("<gray>[Servers] (Avg Tick Time / Tps / Player Count)");
++
++        for (ExternalServer server : MultiPaper.getConnection().getServersMap().values()) {
++            String tickTime = server.getAverageTickTime() + "ms";
++            if (server.getTps() >= 19.9) {
++                tickTime = "<green>" + tickTime;
++            } else if (server.getTps() >= 17.5) {
++                tickTime = "<yellow>" + tickTime;
++            } else {
++                tickTime = "<red>" + tickTime;
++            }
++
++            String tpsString = String.format("%.1f tps", server.getTps());
++
++            int players = 0;
++
++            for (ServerPlayer player : MinecraftServer.getServer().getPlayerList().getPlayers()) {
++                if ((server.isMe() && MultiPaper.isRealPlayer(player))
++                        || (player instanceof ExternalPlayer && ((ExternalPlayer) player).externalServerConnection == server.getConnection())) {
++                    players++;
++                }
++            }
++
++            String playersString = players + " player";
++            if (players != 1) {
++                playersString += "s";
++            }
++
++            if (!server.isAlive()) {
++                stringBuilder.append(String.format("\n<dark_gray>[%s] %sms, %s, %s", server.getName(), server.getAverageTickTime(), tpsString, playersString));
++            } else {
++                stringBuilder.append(String.format("\n<green>[%s<green>] %s<green>, %s, %s",
++                        (server.isMe() ? "<gold>" : "") + server.getName(), tickTime, tpsString, playersString));
++            }
++        }
++
++        sender.sendMessage(MiniMessage.miniMessage().deserialize(stringBuilder.toString()));
++        return true;
++    }
++}
+diff --git a/src/main/java/puregero/multipaper/permissions/MultiPaperCommandPermissions.java b/src/main/java/puregero/multipaper/permissions/MultiPaperCommandPermissions.java
+index f7d9a1538..96cba32d3 100644
+--- a/src/main/java/puregero/multipaper/permissions/MultiPaperCommandPermissions.java
++++ b/src/main/java/puregero/multipaper/permissions/MultiPaperCommandPermissions.java
+@@ -1,6 +1,7 @@
+ package puregero.multipaper.permissions;
+ 
+ import org.bukkit.permissions.Permission;
++import org.bukkit.permissions.PermissionDefault;
+ import org.bukkit.util.permissions.DefaultPermissions;
+ import org.jetbrains.annotations.NotNull;
+ 
+@@ -11,6 +12,8 @@ public class MultiPaperCommandPermissions {
+     public static void registerPermissions(@NotNull Permission parent) {
+         Permission commands = DefaultPermissions.registerPermission(ROOT, "Gives the user the ability to use all MultiPaper commands", parent);
+ 
++        DefaultPermissions.registerPermission(PREFIX + "servers", "List details about servers running on this MultiPaper network", PermissionDefault.TRUE, commands);
++
+ 
+         commands.recalculatePermissibles();
+     }

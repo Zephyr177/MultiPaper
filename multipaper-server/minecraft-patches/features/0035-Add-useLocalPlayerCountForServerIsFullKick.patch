@@ -1,0 +1,35 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Thu, 28 Apr 2022 21:49:48 +1000
+Subject: [PATCH] Add useLocalPlayerCountForServerIsFullKick
+
+Add an option to use the local player count instead of the total player
+count when deciding whether the server is full.
+
+diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
+index 331c781..e9dc23a 100644
+--- a/net/minecraft/server/players/PlayerList.java
++++ b/net/minecraft/server/players/PlayerList.java
+@@ -104,11 +105,12 @@ import net.minecraft.world.scores.PlayerTeam;
+ import net.minecraft.world.scores.Team;
+ import org.jspecify.annotations.Nullable;
+ import org.slf4j.Logger;
++import puregero.multipaper.config.MultiPaperConfiguration;
+ import puregero.multipaper.ExternalServerConnection;
+ import puregero.multipaper.MultiPaper;
+ import puregero.multipaper.externalserverprotocol.PlayerChangeDimensionPacket;
+ import puregero.multipaper.externalserverprotocol.PlayerCreatePacket;
+ import puregero.multipaper.externalserverprotocol.PlayerRemovePacket;
+ 
+ public abstract class PlayerList {
+     public static final File USERBANLIST_FILE = new File("banned-players.json");
+@@ -911,7 +912,8 @@ public abstract class PlayerList {
+ 
+     // Paper start - whitelist verify event / login event
+     public LoginResult canBypassFullServerLogin(final NameAndId nameAndId, final LoginResult currentResult) {
+-        final boolean shouldKick = this.players.size() >= this.getMaxPlayers() && !(/*player.hasPermission("purpur.joinfullserver") || */this.canBypassPlayerLimit(nameAndId)); // Purpur - Allow player join full server by permission TODO: this hasn't worked for a while, so comment it out until we can reliably check perms of the player joining
++        boolean isFull = MultiPaperConfiguration.get().syncSettings.useLocalPlayerCountForServerIsFullKick ? this.localPlayers.size() >= this.getMaxPlayers() : this.players.size() >= this.getMaxPlayers(); // MultiPaper - add isFull
++        final boolean shouldKick = isFull && this.players.size() >= this.getMaxPlayers() && !(/*player.hasPermission("purpur.joinfullserver") || */this.canBypassPlayerLimit(nameAndId)); // Purpur // MultiPaper - Allow player join full server by permission TODO: this hasn't worked for a while, so comment it out until we can reliably check perms of the player joining
+         final io.papermc.paper.event.player.PlayerServerFullCheckEvent fullCheckEvent = new io.papermc.paper.event.player.PlayerServerFullCheckEvent(
+             new com.destroystokyo.paper.profile.CraftPlayerProfile(nameAndId),
+             io.papermc.paper.adventure.PaperAdventure.asAdventure(currentResult.message),
