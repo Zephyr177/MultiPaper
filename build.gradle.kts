@@ -35,7 +35,7 @@ paperweight {
             patchFile = file("multipaper-api/build.gradle.kts.patch")
         }
         patchDir("paperApi") {
-            upstreamPath = "purpur-api"
+            upstreamPath = "paper-api"
             excludes = setOf("build.gradle.kts")
             patchesDir = file("multipaper-api/paper-patches")
             outputDir = file("paper-api")
@@ -99,5 +99,47 @@ tasks.register("printMultiPaperVersion") {
 afterEvaluate {
     tasks.named<RunNestedBuild>("applyUpstream") {
         workDir.set(layout.projectDirectory.dir(".gradle/caches/paperweight/upstreams/paper/nested-upstreams"))
+        // The nested (Purpur) pipeline must also run its server-side patch
+        // application: the api-only applyForDownstream leaves
+        // <upstreams>/paper/paper-server empty, which starves our fork's
+        // base tree (net.minecraft.* sources never materialize).
+        tasks.addAll("purpur-server:applyAllServerPatches")
+    }
+}
+
+// fork-of-fork: paper's own minecraft patches live in the nested build's paper
+// checkout (nested-upstreams/paper/paper-server/patches). The fork project's
+// root-level ("paper") minecraft pipeline defaults to rootDirectory/paper-server/
+// patches -- the fork output, which has no patches -- so the pipeline would stay
+// vanilla. Point it at the checkout, then the multipaper fork's own
+// minecraft-patches (purpur's, inherited) apply on the paper-patched base.
+gradle.projectsEvaluated {
+    val forkCore = project(":multipaper-server").extensions.getByType(
+        io.papermc.paperweight.core.extension.PaperweightCoreExtension::class.java
+    )
+    val paperPatches = project.layout.projectDirectory
+        .dir(".gradle/caches/paperweight/upstreams/paper/nested-upstreams/paper/paper-server/patches")
+    val paperBuildData = project.layout.projectDirectory
+        .dir(".gradle/caches/paperweight/upstreams/paper/nested-upstreams/paper/build-data")
+    forkCore.paper.run {
+        sourcePatchDir.set(paperPatches.dir("sources"))
+        resourcePatchDir.set(paperPatches.dir("resources"))
+        featurePatchDir.set(paperPatches.dir("features"))
+        // the fork's paper chain defaults to the purpur clone's build-data,
+        // which has no paper.at -- without it the source tree misses ~302
+        // access-transformer changes and the paper feature patches fail.
+        additionalAts.set(paperBuildData.file("paper.at"))
+        devImports.set(paperBuildData.file("dev-imports.txt"))
+    }
+
+    // Gradle 9 fails the build on implicit dependencies: the generated
+    // build script's sourceSets point at patch-task outputs without
+    // declaring the edge. Wire the compile to the producing tasks.
+    project(":multipaper-server").tasks.named("compileJava") {
+        dependsOn(
+            "applyMinecraftFeaturePatches",
+            "applyPaperServerFilePatches",
+            "applyPaperServerFeaturePatches",
+        )
     }
 }
