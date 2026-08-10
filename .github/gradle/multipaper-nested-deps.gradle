@@ -1,0 +1,20 @@
+// MultiPaper 26.2 port: paperweight 2.0.0-beta.21 fails to wire the nested
+// (Purpur) build's fork-project patching tasks to the root checkout. The fork
+// project (purpur-server in the nested build, whose root project is renamed
+// "paper" by the nested build runner) consumes nested-upstreams/paper outputs
+// (e.g. paper-server/patches/resources) without declaring the dependency,
+// which Gradle 9.4 rejects as an implicit dependency.
+// Add the dependency explicitly for every patching task in the nested build's
+// fork project. The outer build's root is "multipaper", so it is untouched.
+gradle.beforeProject { p ->
+    def rootName = p.rootProject.name
+    if (rootName != "paper") return
+    if (p.name != "purpur-server") return
+    println("[multipaper-nested-deps] wiring deps for ${p.path}")
+    def checkout = p.rootProject.tasks.named("checkoutPaperRepo")
+    p.tasks.configureEach { t ->
+        if (t.name.startsWith("apply") || t.name.startsWith("rebuild") || t.name.startsWith("fixup")) {
+            t.dependsOn(checkout)
+        }
+    }
+}

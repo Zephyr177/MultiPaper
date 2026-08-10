@@ -9,11 +9,13 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '25'
           cache: 'gradle'
           distribution: 'temurin'
       - name: Configure Git User Details
         run: git config --global user.email "actions@github.com" && git config --global user.name "Github Actions"
+      - name: Install nested-build dependency wiring
+        run: mkdir -p ~/.gradle/init.d && cp .github/gradle/multipaper-nested-deps.gradle ~/.gradle/init.d/
       - name: Apply Patches
         run: ./gradlew applyPatches --stacktrace
       - name: Build Paperclip jar

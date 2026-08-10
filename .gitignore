@@ -57,6 +57,4 @@ multipaper.jar
 /paper-api
 /purpur-server
 /purpur-api
-/multipaper-server/build.gradle.kts
-/multipaper-api/build.gradle.kts
 /multipaper-server/src/minecraft
