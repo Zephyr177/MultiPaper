@@ -17,12 +17,12 @@ jobs:
       - name: Apply Patches
         run: ./gradlew applyAllPatches --stacktrace
       - name: Build Paperclip jar
-        run: ./gradlew shadowjar createReobfPaperclipJar --stacktrace
+        run: ./gradlew :multipaper-server:createPaperclipJar :multipaper-master:shadowJar --stacktrace
       - name: Upload Paperclip jar
         uses: actions/upload-artifact@v4
         with:
           name: multipaper.jar
-          path: build/libs/multipaper-paperclip-*-reobf.jar
+          path: multipaper-server/build/libs/multipaper-paperclip-*.jar
       - name: Upload MultiPaper-Master jar
         uses: actions/upload-artifact@v4
         with:

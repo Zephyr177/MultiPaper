@@ -7,7 +7,10 @@ plugins {
     id("io.papermc.paperweight.patcher") version "2.0.0-beta.21"
     // Master modules apply the shadow plugin without a version; declaring it
     // here (apply false) makes the version resolvable build-wide.
-    id("com.github.johnrengelman.shadow") version "8.1.1" apply false
+    // com.github.johnrengelman.shadow 8.x is incompatible with Gradle 9
+    // (uses removed FileCopyDetails.mode); the maintained fork is
+    // com.gradleup.shadow.
+    id("com.gradleup.shadow") version "9.0.0" apply false
 }
 
 val paperMavenPublicUrl = "https://repo.papermc.io/repository/maven-public/"
@@ -215,13 +218,20 @@ gradle.projectsEvaluated {
 
     // Gradle 9 fails the build on implicit dependencies: the generated
     // build script's sourceSets point at patch-task outputs without
-    // declaring the edge. Wire the compile to the producing tasks.
-    project(":multipaper-server").tasks.named("compileJava") {
+    // declaring the edge. Wire every JavaCompile (compileJava,
+    // compileTestJava, compileLog4jPluginsJava) to the producing tasks.
+    project(":multipaper-server").tasks.withType<JavaCompile>().configureEach {
         dependsOn(
             "applyMinecraftFeaturePatches",
             "applyPaperServerFilePatches",
             "applyPaperServerFeaturePatches",
         )
+    }
+    // processResources reads paper-server/src/main/resources (output of
+    // applyPaperServerFeaturePatches) and src/minecraft/resources (output
+    // of applyMinecraftResourcePatches).
+    project(":multipaper-server").tasks.named("processResources") {
+        dependsOn("applyPaperServerFeaturePatches", "applyMinecraftResourcePatches")
     }
 
     // The fork's base tree is the *filtered* purpur-server output

@@ -3,7 +3,7 @@ version = "${properties["masterVersion"]}"
 plugins {
     java
     `maven-publish`
-    id("com.github.johnrengelman.shadow")
+    id("com.gradleup.shadow")
 }
 
 repositories {
