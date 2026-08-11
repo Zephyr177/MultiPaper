@@ -167,7 +167,12 @@ afterEvaluate {
     // keeps .git only at the checkout root. Stash the nested .git for the
     // duration of the task and restore it afterwards so the nested pipeline's
     // own consumers and UP-TO-DATE checks stay stable.
+    // On a cold cache (CI) upstreams/paper/paper-api does not exist yet:
+    // it is produced by the nested build's applyPurpurPaperApiPatches.
+    // Without an explicit edge, Gradle schedules filterPaperApiFromPaper
+    // before applyUpstream and fails input validation. Declare the order.
     tasks.named("filterPaperApiFromPaper") {
+        dependsOn("applyUpstream")
         doFirst {
             val nestedApiGit = project.layout.projectDirectory
                 .dir(".gradle/caches/paperweight/upstreams/paper/paper-api")
