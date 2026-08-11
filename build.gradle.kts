@@ -104,6 +104,87 @@ afterEvaluate {
         // <upstreams>/paper/paper-server empty, which starves our fork's
         // base tree (net.minecraft.* sources never materialize).
         tasks.addAll("purpur-server:applyAllServerPatches")
+
+        // Gradle 9.4 fails the nested build: :paper:purpur-server's patch
+        // tasks (applyPaperMinecraftResourcePatches & co) read
+        // nested-upstreams/.../paper-server/patches -- the output of
+        // :paper:checkoutPaperRepo -- without declaring the edge. The nested
+        // build is run via Gradle's internal NestedRootBuildRunner, which
+        // does not load init scripts (neither ~/.gradle/init.d nor -I), and
+        // its build scripts are upstream-owned, so the only hook is to inject
+        // dependency wiring into the purpur root script between the checkout
+        // and the nested run. The checkout resets the script on every ref
+        // change, and the marker keeps the injection idempotent.
+        doFirst {
+            val nestedRootScript = project.layout.projectDirectory
+                .dir(".gradle/caches/paperweight/upstreams/paper")
+                .file("build.gradle.kts").asFile
+            val marker = "// MULTIPAPER-NESTED-WIRING-BEGIN"
+            if (nestedRootScript.exists() && !nestedRootScript.readText().contains(marker)) {
+                nestedRootScript.appendText(
+                    "\n\n$marker\n" +
+                        "gradle.projectsEvaluated {\n" +
+                        "    project(\":purpur-server\").tasks.configureEach {\n" +
+                        "        if (name != \"checkoutPaperRepo\") {\n" +
+                        "            dependsOn(rootProject.tasks.named(\"checkoutPaperRepo\"))\n" +
+                        "        }\n" +
+                        "    }\n" +
+                        "}\n" +
+                        "// MULTIPAPER-NESTED-WIRING-END\n"
+                )
+                logger.lifecycle("[multipaper] injected nested-build dependency wiring into purpur build.gradle.kts")
+            }
+        }
+        // The wiring lives in the checkout output; remove it again so
+        // checkoutPaperRepo's output snapshot stays stable and the whole
+        // pipeline can go UP-TO-DATE on the next run.
+        doLast {
+            val nestedRootScript = project.layout.projectDirectory
+                .dir(".gradle/caches/paperweight/upstreams/paper")
+                .file("build.gradle.kts").asFile
+            val markerBegin = "// MULTIPAPER-NESTED-WIRING-BEGIN"
+            val markerEnd = "// MULTIPAPER-NESTED-WIRING-END"
+            if (nestedRootScript.exists()) {
+                val text = nestedRootScript.readText()
+                val start = text.indexOf(markerBegin)
+                val end = text.indexOf(markerEnd)
+                if (start >= 0 && end > start) {
+                    nestedRootScript.writeText(text.removeRange(start, end + markerEnd.length))
+                    logger.lifecycle("[multipaper] removed nested-build wiring after applyUpstream")
+                }
+            }
+        }
+    }
+
+    // The nested build's applyPurpurPaperApiPatches output is a git worktree,
+    // so upstreams/paper/paper-api carries a .git of its own. The outer
+    // filterPaperApiFromPaper copies that directory (including .git) and then
+    // copies the upstream .git on top of it, which fails on Windows with
+    // FileAlreadyExistsException (.git/config). The upstream-owned structure
+    // keeps .git only at the checkout root. Stash the nested .git for the
+    // duration of the task and restore it afterwards so the nested pipeline's
+    // own consumers and UP-TO-DATE checks stay stable.
+    tasks.named("filterPaperApiFromPaper") {
+        doFirst {
+            val nestedApiGit = project.layout.projectDirectory
+                .dir(".gradle/caches/paperweight/upstreams/paper/paper-api")
+                .file(".git").asFile
+            val stash = nestedApiGit.resolveSibling(".git.multipaper-bak")
+            if (nestedApiGit.exists() && !stash.exists()) {
+                check(nestedApiGit.renameTo(stash)) { "could not stash $nestedApiGit" }
+                logger.lifecycle("[multipaper] stashed nested paper-api .git before filtering")
+            }
+        }
+        doLast {
+            val stash = project.layout.projectDirectory
+                .dir(".gradle/caches/paperweight/upstreams/paper/paper-api")
+                .file(".git.multipaper-bak").asFile
+            if (stash.exists()) {
+                val target = stash.resolveSibling(".git")
+                check(stash.renameTo(target)) { "could not restore $stash" }
+                logger.lifecycle("[multipaper] restored nested paper-api .git")
+            }
+        }
     }
 }
 
@@ -141,5 +222,34 @@ gradle.projectsEvaluated {
             "applyPaperServerFilePatches",
             "applyPaperServerFeaturePatches",
         )
+    }
+
+    // The fork's base tree is the *filtered* purpur-server output
+    // (upstreams/paper/purpur-server/.gradle/caches/paperweight/taskCache/
+    // filterPaperServerFromPaper), which paperweight leaves as a git
+    // repository. The fork's filter copies it (including .git) and then
+    // copies gitDir on top -> Windows FileAlreadyExistsException on
+    // .git/config. The nested pipeline's own consumers still need that
+    // .git afterwards, so stash it for the duration of the task and point
+    // gitDir at the real upstream checkout .git (the outer purpur clone).
+    project(":multipaper-server").tasks.withType<io.papermc.paperweight.core.tasks.FilterRepo>()
+        .named("filterPaperServerFromPaper") {
+        gitDir.set(project.rootProject.layout.projectDirectory.dir(".gradle/caches/paperweight/upstreams/paper/.git"))
+        doFirst {
+            val nestedGit = inputDir.get().asFile.resolve(".git")
+            val stash = nestedGit.resolveSibling(".git.multipaper-bak")
+            if (nestedGit.exists() && !stash.exists()) {
+                check(nestedGit.renameTo(stash)) { "could not stash $nestedGit" }
+                logger.lifecycle("[multipaper] stashed nested filter .git before filtering")
+            }
+        }
+        doLast {
+            val stash = inputDir.get().asFile.resolve(".git.multipaper-bak")
+            if (stash.exists()) {
+                val target = stash.resolveSibling(".git")
+                check(stash.renameTo(target)) { "could not restore $stash" }
+                logger.lifecycle("[multipaper] restored nested filter .git")
+            }
+        }
     }
 }

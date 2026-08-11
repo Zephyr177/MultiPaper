@@ -19,16 +19,25 @@
      // Purpur end - Rebrand
  
      /*updatingMinecraft { // Purpur start - TODO - snapshot - we don't need this
-@@ -137,7 +137,7 @@
+@@ -137,7 +137,8 @@
  }
  
  dependencies {
 -    implementation(project(":purpur-api")) // Purpur
 +    implementation(project(":multipaper-api")) // MultiPaper
++    implementation(project(":multipaper-mastermessagingprotocol")) // MultiPaper
      implementation("ca.spottedleaf:leafpile:1.0.0")
      implementation("org.jline:jline-terminal-ffm:3.27.1") // use ffm on java 22+
      implementation("org.jline:jline-terminal-jni:3.27.1") // fall back to jni on java 21
-@@ -198,19 +198,19 @@
+@@ -166,6 +167,7 @@
+     implementation("org.mozilla:rhino-runtime:1.7.14") // Purpur
+     implementation("org.mozilla:rhino-engine:1.7.14") // Purpur
+     implementation("dev.omega24:upnp4j:1.0") // Purpur
++    implementation("com.github.luben:zstd-jni:1.5.2-2") // MultiPaper
+ 
+     // Deps that were previously in the API but have now been moved here for backwards compat, eventually to be removed
+     runtimeOnly("commons-lang:commons-lang:2.6")
+@@ -198,19 +200,19 @@
          val build = System.getenv("BUILD_NUMBER") ?: null
          val buildTime = if (build != null) Instant.now() else Instant.EPOCH // Purpur
          val gitHash = git.exec(providers, "rev-parse", "--short=7", "HEAD").get().trim()
