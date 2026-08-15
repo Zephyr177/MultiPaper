@@ -203,7 +203,7 @@ diff --git a/src/main/java/puregero/multipaper/MultiPaperConnection.java b/src/m
 index 541cb73f5..624b6d507 100644
 --- a/src/main/java/puregero/multipaper/MultiPaperConnection.java
 +++ b/src/main/java/puregero/multipaper/MultiPaperConnection.java
-@@ -12,14 +12,18 @@ import io.netty.channel.socket.nio.NioSocketChannel;
+@@ -12,14 +12,17 @@ import io.netty.channel.socket.nio.NioSocketChannel;
  import net.minecraft.server.MinecraftServer;
  import org.apache.logging.log4j.LogManager;
  import org.apache.logging.log4j.Logger;
@@ -221,7 +221,7 @@ index 541cb73f5..624b6d507 100644
  import java.util.Map;
  import java.util.Set;
  import java.util.UUID;
-@@ -42,7 +46,11 @@ public class MultiPaperConnection extends ServerBoundMessageHandler {
+@@ -42,7 +45,11 @@ public class MultiPaperConnection extends ServerBoundMessageHandler {
      private long lastPingReceived;
      private final Set<MasterBoundMessage> unhandledRequests = ConcurrentHashMap.newKeySet();
      private final Map<String, ExternalServer> serversMap = new ConcurrentHashMap<>();
@@ -233,7 +233,7 @@ index 541cb73f5..624b6d507 100644
  
      public MultiPaperConnection() {
          System.setProperty("multipaper.netty.threads", System.getProperty("multipaper.netty.threads", Integer.toString(Math.min(Runtime.getRuntime().availableProcessors(), 3))));
-@@ -75,12 +83,31 @@ public class MultiPaperConnection extends ServerBoundMessageHandler {
+@@ -75,12 +82,35 @@ public class MultiPaperConnection extends ServerBoundMessageHandler {
          return getOrCreateServer(myName);
      }
  
@@ -269,7 +269,7 @@ index 541cb73f5..624b6d507 100644
          for (MasterBoundMessage unhandledRequest : unhandledRequests) {
              channel.write(unhandledRequest);
          }
-@@ -183,4 +210,75 @@ public class MultiPaperConnection extends ServerBoundMessageHandler {
+@@ -183,4 +213,75 @@ public class MultiPaperConnection extends ServerBoundMessageHandler {
              }
          });
      }
