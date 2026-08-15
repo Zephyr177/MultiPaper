@@ -1,0 +1,32 @@
+--- /dev/null
++++ b/src/test/java/co/aikar/timings/TimingsManagerTest.java
+@@ -1,0 +_,29 @@
++package co.aikar.timings;
++
++import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
++
++import org.bukkit.command.Command;
++import org.bukkit.command.CommandSender;
++import org.bukkit.support.AbstractTestingBase;
++import org.junit.jupiter.api.Test;
++
++class TimingsManagerTest extends AbstractTestingBase {
++
++    @Test
++    void commandTimingDoesNotRequirePluginManagerDuringServerConstruction() {
++        final Command command = new TestCommand();
++
++        assertDoesNotThrow(() -> TimingsManager.getCommandTiming("multipaper", command));
++    }
++
++    private static final class TestCommand extends Command {
++        private TestCommand() {
++            super("test");
++        }
++
++        @Override
++        public boolean execute(final CommandSender sender, final String commandLabel, final String[] args) {
++            return true;
++        }
++    }
++}

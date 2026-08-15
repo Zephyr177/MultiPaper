@@ -47,7 +47,7 @@ public class PurpurVersionFetcher implements VersionFetcher {
         USER_AGENT = BUILD_INFO.brandName() + "/" + BUILD_INFO.asString(VERSION_SIMPLE) + " (https://purpurmc.org)";
     }
 
-    private static int distance = DISTANCE_UNKNOWN;
+    private static volatile int distance = DISTANCE_UNKNOWN;
     public int distance() {
         return distance;
     }

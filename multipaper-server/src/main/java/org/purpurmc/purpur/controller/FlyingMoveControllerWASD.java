@@ -34,7 +34,7 @@ public class FlyingMoveControllerWASD<T extends Mob> extends MoveControllerWASD<
     @Override
     public void purpurTick(Player rider) {
         Input lastClientInput = ((ServerPlayer) rider).getLastClientInput();
-        float forward = lastClientInput.forward() == lastClientInput.backward() ? 0.0F : lastClientInput.forward() ? 1.0F : 0.0F;
+        float forward = lastClientInput.forward() == lastClientInput.backward() ? 0.0F : lastClientInput.forward() ? 1.0F : -1.0F;
         float vertical = forward == 0.0F ? 0.0F : -(rider.xRotO / 45.0F);
         float strafe = (lastClientInput.left() == lastClientInput.right() ? 0.0F : lastClientInput.left() ? 1.0F : -1.0F);
 

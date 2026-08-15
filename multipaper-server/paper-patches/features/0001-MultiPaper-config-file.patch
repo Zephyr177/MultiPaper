@@ -70,6 +70,7 @@ index 0000000000000000000000000000000000000000..d9ae084270c4259371e84246dbc68841
 +import org.spongepowered.configurate.objectmapping.meta.Comment;
 +
 +import java.util.List;
++import java.util.UUID;
 +
 +@SuppressWarnings({ "InnerClassMayBeStatic" })
 +public class MultiPaperConfiguration extends ConfigurationPart {
@@ -110,7 +111,7 @@ index 0000000000000000000000000000000000000000..d9ae084270c4259371e84246dbc68841
 +        // BungeeCord or Velocity, or you can come up with a random name. Each server must
 +        // have a unique name.
 +        // """)
-+        public String myName = "server" + Double.toString(Math.random()).substring(2, 7);
++        public String myName = "server" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
 +    }
 +
 +    public PeerConnection peerConnection;

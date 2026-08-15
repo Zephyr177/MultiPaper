@@ -1,0 +1,14 @@
+--- a/src/main/java/co/aikar/timings/TimingsManager.java
++++ b/src/main/java/co/aikar/timings/TimingsManager.java
+@@ -157,7 +_,10 @@
+             "minecraft".equals(pluginName) || "bukkit".equals(pluginName) ||
+             "spigot".equalsIgnoreCase(pluginName) || "paper".equals(pluginName)
+         )) {
+-            plugin = server.getPluginManager().getPlugin(pluginName);
++            final org.bukkit.plugin.PluginManager pluginManager = server.getPluginManager();
++            if (pluginManager != null) {
++                plugin = pluginManager.getPlugin(pluginName);
++            }
+         }
+         if (plugin == null) {
+             // Plugin is passing custom fallback prefix, try to look up by class loader

@@ -18,6 +18,7 @@ import org.jetbrains.annotations.NotNull;
 public class ReceiveFlower extends Goal {
     private final IronGolem irongolem;
     private ServerPlayer target;
+    private InteractionHand flowerHand;
     private int cooldown;
 
     public ReceiveFlower(IronGolem entity) {
@@ -46,7 +47,7 @@ public class ReceiveFlower extends Goal {
         if (hand == null) {
             return false;
         }
-        removeFlower(player, hand);
+        this.flowerHand = hand;
         this.target = player;
         return true;
     }
@@ -58,6 +59,7 @@ public class ReceiveFlower extends Goal {
 
     @Override
     public void start() {
+        removeFlower(this.target, this.flowerHand);
         this.cooldown = 100;
         this.irongolem.stopBeingAngry();
         this.irongolem.offerFlower(true);

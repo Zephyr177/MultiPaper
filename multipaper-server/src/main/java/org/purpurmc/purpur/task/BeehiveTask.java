@@ -45,24 +45,32 @@ public class BeehiveTask implements PluginMessageListener {
     @Override
     public void onPluginMessageReceived(@NotNull String channel, @NotNull Player player, byte[] bytes) {
         FriendlyByteBuf byteBuf = new FriendlyByteBuf(Unpooled.copiedBuffer(bytes));
-        ServerboundBeehivePayload payload = ServerboundBeehivePayload.STREAM_CODEC.decode(byteBuf);
+        try {
+            ServerboundBeehivePayload payload = ServerboundBeehivePayload.STREAM_CODEC.decode(byteBuf);
 
-        ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
+            ServerPlayer serverPlayer = ((CraftPlayer) player).getHandle();
 
-        // targeted block info max range specified in client at net.minecraft.client.gui.hud.DebugHud#render
-        if (!Vec3.atCenterOf(payload.pos()).closerThan(serverPlayer.position(), 20)) return; // Targeted Block info max range is 20
-        if (serverPlayer.level().getChunkIfLoaded(payload.pos()) == null) return;
+            // targeted block info max range specified in client at net.minecraft.client.gui.hud.DebugHud#render
+            if (!Vec3.atCenterOf(payload.pos()).closerThan(serverPlayer.position(), 20)) return; // Targeted Block info max range is 20
+            if (serverPlayer.level().getChunkIfLoaded(payload.pos()) == null) return;
 
-        BlockEntity blockEntity = serverPlayer.level().getBlockEntity(payload.pos());
-        if (!(blockEntity instanceof BeehiveBlockEntity beehive)) {
-            return;
+            BlockEntity blockEntity = serverPlayer.level().getBlockEntity(payload.pos());
+            if (!(blockEntity instanceof BeehiveBlockEntity beehive)) {
+                return;
+            }
+
+            ClientboundBeehivePayload customPacketPayload = new ClientboundBeehivePayload(payload.pos(), beehive.getOccupantCount());
+            FriendlyByteBuf friendlyByteBuf = new FriendlyByteBuf(Unpooled.buffer());
+            try {
+                ClientboundBeehivePayload.STREAM_CODEC.encode(friendlyByteBuf, customPacketPayload);
+                byte[] byteArray = new byte[friendlyByteBuf.readableBytes()];
+                friendlyByteBuf.readBytes(byteArray);
+                player.sendPluginMessage(this.plugin, customPacketPayload.type().id().toString(), byteArray);
+            } finally {
+                friendlyByteBuf.release();
+            }
+        } finally {
+            byteBuf.release();
         }
-
-        ClientboundBeehivePayload customPacketPayload = new ClientboundBeehivePayload(payload.pos(), beehive.getOccupantCount());
-        FriendlyByteBuf friendlyByteBuf = new FriendlyByteBuf(Unpooled.buffer());
-        ClientboundBeehivePayload.STREAM_CODEC.encode(friendlyByteBuf, customPacketPayload);
-        byte[] byteArray = new byte[friendlyByteBuf.readableBytes()];
-        friendlyByteBuf.readBytes(byteArray);
-        player.sendPluginMessage(this.plugin, customPacketPayload.type().id().toString(), byteArray);
     }
 }

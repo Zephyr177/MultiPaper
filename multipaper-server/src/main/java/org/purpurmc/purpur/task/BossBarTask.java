@@ -6,15 +6,15 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import org.purpurmc.purpur.util.MinecraftInternalPlugin;
 
 public abstract class BossBarTask extends BukkitRunnable {
-    private final Map<UUID, BossBar> bossbars = new HashMap<>();
+    private final Map<UUID, BossBar> bossbars = new ConcurrentHashMap<>();
     private boolean started;
 
     abstract BossBar createBossBar();

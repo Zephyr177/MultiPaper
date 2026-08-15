@@ -53,7 +53,9 @@ public class CompassTask extends BossBarTask {
         float yaw = player.getLocation().getYaw();
         int length = PurpurConfig.commandCompassBarTitle.length();
         int pos = (int) ((normalize(yaw) * (length / 720F)) + (length / 2F));
-        bossbar.name(Component.text(PurpurConfig.commandCompassBarTitle.substring(pos - 25, pos + 25)));
+        int start = Math.max(0, pos - 25);
+        int end = Math.min(length, pos + 25);
+        bossbar.name(Component.text(PurpurConfig.commandCompassBarTitle.substring(start, end)));
     }
 
     private float normalize(float yaw) {
