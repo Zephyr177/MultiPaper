@@ -63,7 +63,7 @@ new file mode 100644
 index 0000000000000000000000000000000000000000..d9ae084270c4259371e84246dbc68841ace99d18
 --- /dev/null
 +++ b/src/main/java/puregero/multipaper/config/MultiPaperConfiguration.java
-@@ -0,0 +1,90 @@
+@@ -0,0 +1,91 @@
 +package puregero.multipaper.config;
 +
 +import io.papermc.paper.configuration.ConfigurationPart;
