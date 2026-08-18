@@ -31,7 +31,7 @@ index 331c781..6dc146f 100644
      private final Map<UUID, ServerPlayer> playersByUUID = Maps.newHashMap();
      private final UserBanList bans;
      private final IpBanList ipBans;
-@@ -232,19 +233,29 @@ public abstract class PlayerList {
+@@ -232,28 +233,29 @@ public abstract class PlayerList {
  
          // player.connection.send(ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(this.players)); // CraftBukkit - replaced with loop below
          // MultiPaper start
