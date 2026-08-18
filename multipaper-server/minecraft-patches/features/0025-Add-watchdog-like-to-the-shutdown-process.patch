@@ -8,7 +8,7 @@ diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/Mi
 index d9402a730568d66110a5f87c6a97f8b510c9a3a6..11dc053c192df96b16fb90a2e7b553c81a0bb357 100644
 --- a/net/minecraft/server/MinecraftServer.java
 +++ b/net/minecraft/server/MinecraftServer.java
-@@ -1024,6 +1024,43 @@
+@@ -1024,6 +1024,42 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
              this.cancelRecordingMetrics();
          }
  
