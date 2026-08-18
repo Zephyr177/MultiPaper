@@ -8,7 +8,7 @@ diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/Mi
 index d9402a730568d66110a5f87c6a97f8b510c9a3a6..11dc053c192df96b16fb90a2e7b553c81a0bb357 100644
 --- a/net/minecraft/server/MinecraftServer.java
 +++ b/net/minecraft/server/MinecraftServer.java
-@@ -1024,6 +1024,42 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+@@ -1024,6 +1024,43 @@
              this.cancelRecordingMetrics();
          }
  
@@ -23,15 +23,15 @@ index d9402a730568d66110a5f87c6a97f8b510c9a3a6..11dc053c192df96b16fb90a2e7b553c8
 +                    e.printStackTrace();
 +                }
 +                LOGGER.error("The server has not stopped after {} seconds! Creating thread dump", (System.currentTimeMillis() - start) / 1000);
-                if (shutdownThread.isAlive()) {
-                    LOGGER.error("{} Stack:", shutdownThread.getName());
-                    for (StackTraceElement element : shutdownThread.getStackTrace()) {
-                        LOGGER.error("\t{}", element);
-                    }
-                } else {
-                    LOGGER.info("The shutdown thread has completed. Watchdog exiting.");
-                    break;
-                }
++                if (shutdownThread.isAlive()) {
++                    LOGGER.error("{} Stack:", shutdownThread.getName());
++                    for (StackTraceElement element : shutdownThread.getStackTrace()) {
++                        LOGGER.error("\t{}", element);
++                    }
++                } else {
++                    LOGGER.info("The shutdown thread has completed. Watchdog exiting.");
++                    break;
++                }
 +                if ((++count) % 6 == 0) {
 +                    LOGGER.error("All thread stacks:");
 +                    for (Map.Entry<Thread, StackTraceElement[]> entry : Thread.getAllStackTraces().entrySet()) {
