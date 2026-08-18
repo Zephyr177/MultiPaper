@@ -307,7 +307,7 @@ new file mode 100644
 index 000000000..e2fd0dcbb
 --- /dev/null
 +++ b/src/main/java/puregero/multipaper/externalserverprotocol/PlayerChangeDimensionPacket.java
-@@ -0,0 +1,84 @@
+@@ -0,0 +1,85 @@
 +package puregero.multipaper.externalserverprotocol;
 +
 +import net.minecraft.network.FriendlyByteBuf;
@@ -642,7 +642,7 @@ new file mode 100644
 index 000000000..1f42d3840
 --- /dev/null
 +++ b/src/main/java/puregero/multipaper/externalserverprotocol/PlayerRespawnPacket.java
-@@ -0,0 +1,103 @@
+@@ -0,0 +1,104 @@
 +package puregero.multipaper.externalserverprotocol;
 +
 +import net.minecraft.network.FriendlyByteBuf;
