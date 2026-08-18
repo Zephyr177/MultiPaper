@@ -207,7 +207,7 @@ diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server
 +import puregero.multipaper.externalserverprotocol.PlayerRemovePacket;
  
  public abstract class PlayerList {
-@@ -224,4 +226,25 @@
+@@ -224,4 +226,26 @@
          // player.connection.send(ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(this.players)); // CraftBukkit - replaced with loop below
 +        // MultiPaper start
 +        boolean connected;

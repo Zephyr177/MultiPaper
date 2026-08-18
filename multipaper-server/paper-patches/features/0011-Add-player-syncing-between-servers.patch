@@ -307,7 +307,7 @@ new file mode 100644
 index 000000000..e2fd0dcbb
 --- /dev/null
 +++ b/src/main/java/puregero/multipaper/externalserverprotocol/PlayerChangeDimensionPacket.java
-@@ -0,0 +1,83 @@
+@@ -0,0 +1,84 @@
 +package puregero.multipaper.externalserverprotocol;
 +
 +import net.minecraft.network.FriendlyByteBuf;
@@ -391,6 +391,7 @@ index 000000000..e2fd0dcbb
 +            player.unsetRemoved();
 +            level.addRespawnedPlayer(player);
 +        });
++    }
 +}
 diff --git a/src/main/java/puregero/multipaper/externalserverprotocol/PlayerChangeGamemodePacket.java b/src/main/java/puregero/multipaper/externalserverprotocol/PlayerChangeGamemodePacket.java
 new file mode 100644
@@ -641,7 +642,7 @@ new file mode 100644
 index 000000000..1f42d3840
 --- /dev/null
 +++ b/src/main/java/puregero/multipaper/externalserverprotocol/PlayerRespawnPacket.java
-@@ -0,0 +1,102 @@
+@@ -0,0 +1,103 @@
 +package puregero.multipaper.externalserverprotocol;
 +
 +import net.minecraft.network.FriendlyByteBuf;
@@ -741,11 +742,11 @@ index 000000000..1f42d3840
 +
 +            // Restore custom respawn location from the originating server
 +            if (x != 0 || y != 0 || z != 0) {
-+                player.teleportTo(bukkitWorld.getName(), x, y, z, java.util.Set.of(), yaw, pitch, null);
++                player.teleport(new org.bukkit.Location(bukkitWorld, x, y, z, yaw, pitch));
 +            }
 +        });
++    }
 +}
-diff --git a/src/main/java/puregero/multipaper/externalserverprotocol/SubscribeToWorldPacket.java b/src/main/java/puregero/multipaper/externalserverprotocol/SubscribeToWorldPacket.java
 index 5cbf42b51..a5b8ebe30 100644
 --- a/src/main/java/puregero/multipaper/externalserverprotocol/SubscribeToWorldPacket.java
 +++ b/src/main/java/puregero/multipaper/externalserverprotocol/SubscribeToWorldPacket.java
