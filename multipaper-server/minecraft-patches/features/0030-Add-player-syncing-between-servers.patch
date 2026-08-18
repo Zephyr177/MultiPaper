@@ -188,9 +188,10 @@ diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/ne
 diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
 --- a/net/minecraft/server/players/PlayerList.java
 +++ b/net/minecraft/server/players/PlayerList.java
-@@ -14,2 +14,3 @@
+@@ -14,2 +14,4 @@
  import java.time.Instant;
 +import java.util.ArrayList;
++import java.util.concurrent.TimeUnit;
  import java.util.EnumSet;
 @@ -36,2 +37,3 @@
  import net.minecraft.network.protocol.Packet;
@@ -206,10 +207,19 @@ diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server
 +import puregero.multipaper.externalserverprotocol.PlayerRemovePacket;
  
  public abstract class PlayerList {
-@@ -224,4 +226,17 @@
+@@ -224,4 +226,25 @@
          // player.connection.send(ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(this.players)); // CraftBukkit - replaced with loop below
 +        // MultiPaper start
-+        if (!MultiPaper.sendPlayerConnect(player).join()) {
++        boolean connected;
++        try {
++            connected = MultiPaper.sendPlayerConnect(player).orTimeout(10, TimeUnit.SECONDS).join();
++        } catch (java.util.concurrent.CompletionException ex) {
++            Component chatmessage = Component.literal("Timed out connecting to the master server.");
++            connection.send(new ClientboundDisconnectPacket(chatmessage));
++            connection.disconnect(chatmessage);
++            return;
++        }
++        if (!connected) {
 +            Component chatmessage = Component.literal("You are already logged into another server.");
 +            connection.send(new ClientboundDisconnectPacket(chatmessage));
 +            connection.disconnect(chatmessage);

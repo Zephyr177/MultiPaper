@@ -307,7 +307,7 @@ new file mode 100644
 index 000000000..e2fd0dcbb
 --- /dev/null
 +++ b/src/main/java/puregero/multipaper/externalserverprotocol/PlayerChangeDimensionPacket.java
-@@ -0,0 +1,73 @@
+@@ -0,0 +1,83 @@
 +package puregero.multipaper.externalserverprotocol;
 +
 +import net.minecraft.network.FriendlyByteBuf;
@@ -319,10 +319,13 @@ index 000000000..e2fd0dcbb
 +import org.bukkit.craftbukkit.CraftWorld;
 +import puregero.multipaper.ExternalServerConnection;
 +import puregero.multipaper.MultiPaper;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
 +
 +import java.util.UUID;
 +
 +public class PlayerChangeDimensionPacket extends ExternalServerPacket {
++    private static final Logger LOGGER = LoggerFactory.getLogger(PlayerChangeDimensionPacket.class);
 +
 +    private final UUID uuid;
 +    private final UUID world;
@@ -362,8 +365,17 @@ index 000000000..e2fd0dcbb
 +    @Override
 +    public void handle(ExternalServerConnection connection) {
 +        MultiPaper.runSync(() -> {
-+            ServerLevel level = ((CraftWorld) Bukkit.getWorld(world)).getHandle();
++            org.bukkit.World bukkitWorld = Bukkit.getWorld(world);
++            if (bukkitWorld == null) {
++                LOGGER.warn("PlayerChangeDimensionPacket: World {} not found on this server", world);
++                return;
++            }
++            ServerLevel level = ((CraftWorld) bukkitWorld).getHandle();
 +            ServerPlayer player = MinecraftServer.getServer().getPlayerList().getPlayer(uuid);
++            if (player == null) {
++                LOGGER.warn("PlayerChangeDimensionPacket: Player {} not found", uuid);
++                return;
++            }
 +
 +            // Remove from old world
 +            ((ServerLevel) player.level()).removePlayerImmediately(player, Entity.RemovalReason.DISCARDED);
@@ -379,7 +391,6 @@ index 000000000..e2fd0dcbb
 +            player.unsetRemoved();
 +            level.addRespawnedPlayer(player);
 +        });
-+    }
 +}
 diff --git a/src/main/java/puregero/multipaper/externalserverprotocol/PlayerChangeGamemodePacket.java b/src/main/java/puregero/multipaper/externalserverprotocol/PlayerChangeGamemodePacket.java
 new file mode 100644
@@ -630,7 +641,7 @@ new file mode 100644
 index 000000000..1f42d3840
 --- /dev/null
 +++ b/src/main/java/puregero/multipaper/externalserverprotocol/PlayerRespawnPacket.java
-@@ -0,0 +1,88 @@
+@@ -0,0 +1,102 @@
 +package puregero.multipaper.externalserverprotocol;
 +
 +import net.minecraft.network.FriendlyByteBuf;
@@ -644,10 +655,13 @@ index 000000000..1f42d3840
 +import org.bukkit.event.player.PlayerRespawnEvent;
 +import puregero.multipaper.ExternalServerConnection;
 +import puregero.multipaper.MultiPaper;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
 +
 +import java.util.UUID;
 +
 +public class PlayerRespawnPacket extends ExternalServerPacket {
++    private static final Logger LOGGER = LoggerFactory.getLogger(PlayerRespawnPacket.class);
 +
 +    private final UUID uuid;
 +    private final String world;
@@ -711,13 +725,25 @@ index 000000000..1f42d3840
 +    @Override
 +    public void handle(ExternalServerConnection connection) {
 +        MultiPaper.runSync(() -> {
-+            ServerLevel level = ((CraftWorld) Bukkit.getWorld(world)).getHandle();
++            org.bukkit.World bukkitWorld = Bukkit.getWorld(world);
++            if (bukkitWorld == null) {
++                LOGGER.warn("PlayerRespawnPacket: World {} not found on this server", world);
++                return;
++            }
 +            ServerPlayer player = MinecraftServer.getServer().getPlayerList().getPlayer(uuid);
++            if (player == null) {
++                LOGGER.warn("PlayerRespawnPacket: Player {} not found", uuid);
++                return;
++            }
 +
 +            // MultiPaper: the 26.2 respawn API no longer takes a world/location; the respawn position is derived from the player's spawn data
-+            level.getServer().getPlayerList().respawn(player, alive, Entity.RemovalReason.KILLED, PlayerRespawnEvent.RespawnReason.DEATH);
++            MinecraftServer.getServer().getPlayerList().respawn(player, alive, Entity.RemovalReason.KILLED, PlayerRespawnEvent.RespawnReason.DEATH);
++
++            // Restore custom respawn location from the originating server
++            if (x != 0 || y != 0 || z != 0) {
++                player.teleportTo(bukkitWorld.getName(), x, y, z, java.util.Set.of(), yaw, pitch, null);
++            }
 +        });
-+    }
 +}
 diff --git a/src/main/java/puregero/multipaper/externalserverprotocol/SubscribeToWorldPacket.java b/src/main/java/puregero/multipaper/externalserverprotocol/SubscribeToWorldPacket.java
 index 5cbf42b51..a5b8ebe30 100644

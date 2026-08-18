@@ -5,8 +5,7 @@
                      double damagePerBlock = level.getWorldBorder().getDamagePerBlock();
                      if (damagePerBlock > 0.0) {
 +                        // Purpur start - Add option to teleport to spawn if outside world border
-+                        if (this.level().purpurConfig.teleportIfOutsideBorder && this instanceof ServerPlayer serverPlayer) {
-+                            serverPlayer.teleport(org.bukkit.craftbukkit.util.CraftLocation.toBukkit(this.level().getLevelData().getRespawnData().pos(), this.level()));
++                        if (this.level().purpurConfig.teleportIfOutsideBorder && this instanceof ServerPlayer serverPlayer && this.level().getLevelData().getRespawnData() != null) {
 +                            return;
 +                        }
 +                        // Purpur end - Add option to teleport to spawn if outside world border
@@ -64,7 +63,7 @@
 +            if (entityliving.hasEffect(MobEffects.BLINDNESS)) {
 +                int amplifier = entityliving.getEffect(MobEffects.BLINDNESS).getAmplifier();
 +                for (int i = 0; i < amplifier; i++) {
-+                    amplifier *= this.level().purpurConfig.mobsBlindnessMultiplier;
++                    visibilityPercent *= this.level().purpurConfig.mobsBlindnessMultiplier;
 +                }
 +            }
 +        }
@@ -80,7 +79,7 @@
              EntityPotionEffectEvent event = CraftEventFactory.callEntityPotionEffectChangeEvent(this, effect, null, cause, EntityPotionEffectEvent.Action.CLEARED);
              if (event.isCancelled()) {
                  continue;
-@@ -1441,7 +_,23 @@
+@@ -1441,7 +_,24 @@
              this.stopSleeping();
          }
  
@@ -101,7 +100,8 @@
 +                }
 +            }
 +        }
-+        // Purpur end - One Punch Man!this.noActionTime = 0;
++        // Purpur end - One Punch Man!
++         this.noActionTime = 0;
          if (damage < 0.0F) {
              damage = 0.0F;
          }

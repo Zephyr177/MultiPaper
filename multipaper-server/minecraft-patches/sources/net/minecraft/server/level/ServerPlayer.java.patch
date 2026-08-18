@@ -196,7 +196,7 @@
 +        if (this.level().purpurConfig.idleTimeoutUpdateTabList) {
 +            String scoreboardName = getScoreboardName();
 +            String playerListName = net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().serialize(getBukkitEntity().playerListName());
-+            String[] split = playerListName.split(scoreboardName);
++            String[] split = playerListName.split(java.util.regex.Pattern.quote(scoreboardName), 2);
 +            String prefix = (split.length > 0 ? split[0] : "").replace(org.purpurmc.purpur.PurpurConfig.afkTabListPrefix, "");
 +            String suffix = (split.length > 1 ? split[1] : "").replace(org.purpurmc.purpur.PurpurConfig.afkTabListSuffix, "");
 +            if (afk) {

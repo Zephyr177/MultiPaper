@@ -88,9 +88,14 @@ public class DolphinSpit extends LlamaSpit {
 
     @Override
     protected void onHitEntity(EntityHitResult entityHitResult) {
-        Entity shooter = this.getOwner();
-        if (shooter instanceof LivingEntity) {
-            entityHitResult.getEntity().hurt(entityHitResult.getEntity().damageSources().mobProjectile(this, (LivingEntity) shooter), level().purpurConfig.dolphinSpitDamage);
+        Level world = this.level();
+
+        if (world instanceof ServerLevel worldserver) {
+            Entity shooter = this.getOwner();
+            if (shooter instanceof LivingEntity) {
+                Entity target = entityHitResult.getEntity();
+                target.hurtServer(worldserver, target.damageSources().mobProjectile(this, (LivingEntity) shooter), worldserver.purpurConfig.dolphinSpitDamage);
+            }
         }
     }
 
