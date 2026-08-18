@@ -31,11 +31,20 @@ index 331c781..6dc146f 100644
      private final Map<UUID, ServerPlayer> playersByUUID = Maps.newHashMap();
      private final UserBanList bans;
      private final IpBanList ipBans;
-@@ -232,19 +233,20 @@ public abstract class PlayerList {
+@@ -232,19 +233,29 @@ public abstract class PlayerList {
  
          // player.connection.send(ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(this.players)); // CraftBukkit - replaced with loop below
          // MultiPaper start
-         if (!MultiPaper.sendPlayerConnect(player).join()) {
+         boolean connected;
+         try {
+             connected = MultiPaper.sendPlayerConnect(player).orTimeout(10, TimeUnit.SECONDS).join();
+         } catch (java.util.concurrent.CompletionException ex) {
+             Component chatmessage = Component.literal("Timed out connecting to the master server.");
+             connection.send(new ClientboundDisconnectPacket(chatmessage));
+             connection.disconnect(chatmessage);
+             return;
+         }
+         if (!connected) {
              Component chatmessage = Component.literal("You are already logged into another server.");
              connection.send(new ClientboundDisconnectPacket(chatmessage));
              connection.disconnect(chatmessage);
